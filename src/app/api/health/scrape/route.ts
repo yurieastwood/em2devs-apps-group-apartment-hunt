@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchListingHtml } from "@/lib/extract/fetch-listing";
+import { profileForUrl } from "@/lib/extract/profiles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,7 +23,9 @@ function extractTitle(html: string): string | null {
 async function probe(url: string): Promise<ProbeResult> {
   const started = Date.now();
   try {
-    const { status, html } = await fetchListingHtml(url);
+    const { status, html } = await fetchListingHtml(url, {
+      profile: profileForUrl(url),
+    });
     const ms = Date.now() - started;
     if (status === 200) {
       return { url, ok: true, status, title: extractTitle(html), bytes: html.length, ms };
