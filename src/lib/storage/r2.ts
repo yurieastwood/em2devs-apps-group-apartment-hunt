@@ -1,4 +1,5 @@
 import {
+  DeleteObjectsCommand,
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -42,6 +43,16 @@ export async function putObject(
       Key: key,
       Body: body,
       ContentType: contentType,
+    }),
+  );
+}
+
+export async function deleteObjects(keys: string[]): Promise<void> {
+  if (keys.length === 0) return;
+  await getClient().send(
+    new DeleteObjectsCommand({
+      Bucket: getBucket(),
+      Delete: { Objects: keys.map((Key) => ({ Key })) },
     }),
   );
 }

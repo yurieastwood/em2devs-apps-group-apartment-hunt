@@ -1,9 +1,11 @@
 import { asc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
 import { listingPhotos, listings } from "@/db/schema";
 import { urlFor } from "@/lib/storage/r2";
 import { PhotoCarousel } from "@/components/photo-carousel";
+import { DeleteButton } from "./delete-button";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +44,7 @@ function PhotoErrorsSection({ raw }: { raw: unknown }) {
 
 export default async function ListingDetailPage({ params }: { params: Params }) {
   const { id } = await params;
+  const { userId } = await auth();
 
   const [listing] = await db
     .select()
@@ -50,6 +53,8 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
     .limit(1);
 
   if (!listing) notFound();
+
+  const isOwner = userId === listing.ownerClerkUserId;
 
   const photos = await db
     .select()
@@ -107,14 +112,17 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
         </section>
       ) : null}
 
-      <a
-        href={listing.sourceUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-block text-primary hover:underline"
-      >
-        View original listing on {listing.sourceHost} →
-      </a>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        <a
+          href={listing.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline"
+        >
+          View original listing on {listing.sourceHost} →
+        </a>
+        {isOwner ? <DeleteButton listingId={listing.id} /> : null}
+      </div>
     </main>
   );
 }
