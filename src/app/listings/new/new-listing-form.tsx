@@ -2,11 +2,9 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import {
-  createListingAction,
-  initialActionState,
-  type ActionState,
-} from "./actions";
+import { createListingAction, type ActionState } from "./actions";
+
+const initialActionState: ActionState = { kind: "idle" };
 
 export function NewListingForm() {
   const [state, formAction] = useActionState<ActionState, FormData>(

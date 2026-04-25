@@ -9,8 +9,6 @@ import {
 
 export type ActionState = { kind: "idle" } | { kind: "error"; message: string };
 
-export const initialActionState: ActionState = { kind: "idle" };
-
 function messageFor(err: CreateListingError): string {
   switch (err.kind) {
     case "invalid_url":
@@ -20,7 +18,7 @@ function messageFor(err: CreateListingError): string {
     case "fetch_failed":
       return `Could not fetch the listing (HTTP ${err.status}). The site may have updated its bot detection — try again later.`;
     case "duplicate":
-      return "This listing was already added."; // unreachable: duplicates redirect below
+      return "This listing was already added.";
     case "unknown":
       return err.message;
   }
