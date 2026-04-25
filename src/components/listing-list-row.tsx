@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Lightbox from "yet-another-react-lightbox";
+import "yet-another-react-lightbox/styles.css";
 
 export type ListingListRowProps = {
   listingId: string;
@@ -20,7 +22,7 @@ export function ListingListRow({
   priceUsd,
   coverUrl,
 }: ListingListRowProps) {
-  const [show, setShow] = useState(false);
+  const [open, setOpen] = useState(false);
 
   return (
     <li>
@@ -45,24 +47,20 @@ export function ListingListRow({
         {coverUrl ? (
           <button
             type="button"
-            onClick={() => setShow((s) => !s)}
-            aria-expanded={show}
+            onClick={() => setOpen(true)}
             className="text-sm text-primary hover:underline shrink-0"
           >
-            {show ? "Hide photo" : "Show photo"}
+            Show photo
           </button>
         ) : null}
       </div>
-      {show && coverUrl ? (
-        <div className="px-3 pb-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={coverUrl}
-            alt={address}
-            className="w-full max-w-sm rounded border border-border"
-            loading="lazy"
-          />
-        </div>
+
+      {coverUrl ? (
+        <Lightbox
+          open={open}
+          close={() => setOpen(false)}
+          slides={[{ src: coverUrl, alt: address }]}
+        />
       ) : null}
     </li>
   );
