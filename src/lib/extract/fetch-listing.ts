@@ -4,7 +4,9 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { profileCandidates } from "./profiles";
 
-const DEFAULT_BIN = path.join(process.cwd(), "bin", "curl-impersonate");
+function defaultBinPath(): string {
+  return path.join(process.cwd(), "bin", "curl-impersonate");
+}
 
 export type FetchOptions = {
   profile?: string;
@@ -45,7 +47,7 @@ async function curlFetch(
     cookieJar,
     timeoutMs = 20_000,
   } = opts;
-  const bin = process.env.CURL_IMPERSONATE_BIN ?? DEFAULT_BIN;
+  const bin = process.env.CURL_IMPERSONATE_BIN ?? defaultBinPath();
   const bodyFile = path.join("/tmp", `ci-${randomUUID()}`);
 
   const args: string[] = [
