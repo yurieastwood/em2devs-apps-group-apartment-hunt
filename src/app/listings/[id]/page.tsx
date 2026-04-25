@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/db/client";
 import { listingPhotos, listings } from "@/db/schema";
 import { urlFor } from "@/lib/storage/r2";
+import { PhotoCarousel } from "@/components/photo-carousel";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -88,20 +89,13 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
         ) : null}
       </ul>
 
-      {photos.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-6">
-          {photos.map((photo, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={photo.id}
-              src={photoUrls[i]}
-              alt={`${listing.address ?? "Listing"} photo ${photo.sortOrder + 1}`}
-              className="w-full h-64 object-cover rounded border border-border"
-              loading="lazy"
-            />
-          ))}
-        </div>
-      ) : null}
+      <PhotoCarousel
+        photos={photos.map((photo, i) => ({
+          url: photoUrls[i],
+          alt: `${listing.address ?? "Listing"} photo ${photo.sortOrder + 1}`,
+        }))}
+      />
+
 
       <PhotoErrorsSection raw={listing.raw} />
 
