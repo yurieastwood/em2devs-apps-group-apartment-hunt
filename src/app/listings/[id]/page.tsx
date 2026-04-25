@@ -8,6 +8,7 @@ import { urlFor } from "@/lib/storage/r2";
 import { PhotoCarousel } from "@/components/photo-carousel";
 import { DeleteButton } from "./delete-button";
 import { CommentsSection } from "./comments-section";
+import { ReactionsBar } from "./reactions-bar";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -134,6 +135,10 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
             <DeleteButton listingId={listing.id} />
           </>
         ) : null}
+      </div>
+
+      <div className="mt-6">
+        <ReactionsBar listingId={listing.id} />
       </div>
 
       <CommentsSection listingId={listing.id} />

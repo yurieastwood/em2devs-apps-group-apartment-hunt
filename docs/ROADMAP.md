@@ -60,7 +60,8 @@ Find, edit, react to and comment on saved listings.
 - ✅ Owner-only **Edit listing** form (`/listings/[id]/edit`) — same form doubles as manual-correction for bad extractions
 - ✅ `comments` + `reactions` tables (schema in place)
 - ✅ Comments UI on detail page — post + thread, author avatar/name from Clerk, owner-only delete
-- 📋 Reactions UI on detail page (emoji picker, count + who reacted)
+- ✅ Reactions UI on detail page — fixed emoji set (❤️ 👍 🔥 😍 🤔 👎), click to toggle, count + your-own-reaction highlighted
+- 📋 Home-page map — center on a user-configured "current home" address (geocoded once, lat/lng stored), pin every saved listing, auto-fit bounds. Includes a settings flow to set/edit the home address.
 
 ## Slice 3 — Access control 📋
 
