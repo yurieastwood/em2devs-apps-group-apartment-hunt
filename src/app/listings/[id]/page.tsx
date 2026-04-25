@@ -1,5 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
 import { listingPhotos, listings } from "@/db/schema";
@@ -121,7 +122,17 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
         >
           View original listing on {listing.sourceHost} →
         </a>
-        {isOwner ? <DeleteButton listingId={listing.id} /> : null}
+        {isOwner ? (
+          <>
+            <Link
+              href={`/listings/${listing.id}/edit`}
+              className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+            >
+              Edit
+            </Link>
+            <DeleteButton listingId={listing.id} />
+          </>
+        ) : null}
       </div>
     </main>
   );
