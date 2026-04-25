@@ -43,24 +43,24 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
           {listing.title ?? listing.address ?? "Untitled listing"}
         </h1>
         {listing.address && listing.address !== listing.title ? (
-          <p className="text-gray-600">{listing.address}</p>
+          <p className="text-muted-foreground">{listing.address}</p>
         ) : null}
       </header>
 
-      <ul className="flex flex-wrap gap-x-6 gap-y-2 mb-6 text-sm text-gray-700">
+      <ul className="flex flex-wrap gap-x-6 gap-y-2 mb-6 text-sm text-muted-foreground">
         {listing.bedrooms ? (
           <li>
-            <strong>{listing.bedrooms}</strong> BR
+            <strong className="text-foreground">{listing.bedrooms}</strong> BR
           </li>
         ) : null}
         {listing.bathrooms ? (
           <li>
-            <strong>{listing.bathrooms}</strong> BA
+            <strong className="text-foreground">{listing.bathrooms}</strong> BA
           </li>
         ) : null}
         {listing.squareFeet ? <li>{fmtSqft(listing.squareFeet)}</li> : null}
         {listing.priceUsd ? (
-          <li className="font-semibold text-gray-900">
+          <li className="font-semibold text-foreground">
             {fmtPrice(listing.priceUsd)}
           </li>
         ) : null}
@@ -74,7 +74,7 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
               key={photo.id}
               src={photoUrls[i]}
               alt={`${listing.address ?? "Listing"} photo ${photo.sortOrder + 1}`}
-              className="w-full h-64 object-cover rounded"
+              className="w-full h-64 object-cover rounded border border-border"
               loading="lazy"
             />
           ))}
@@ -84,9 +84,7 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
       {listing.description ? (
         <section className="mb-6">
           <h2 className="text-lg font-medium mb-2">Description</h2>
-          <p className="whitespace-pre-line text-sm text-gray-800">
-            {listing.description}
-          </p>
+          <p className="whitespace-pre-line text-sm">{listing.description}</p>
         </section>
       ) : null}
 
@@ -94,7 +92,7 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
         href={listing.sourceUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-block text-blue-600 hover:underline"
+        className="inline-block text-primary hover:underline"
       >
         View original listing on {listing.sourceHost} →
       </a>

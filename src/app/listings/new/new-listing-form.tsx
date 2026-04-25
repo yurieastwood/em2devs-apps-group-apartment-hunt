@@ -16,7 +16,7 @@ export function NewListingForm() {
       <UrlField />
       <SubmitButton />
       {state.kind === "error" ? (
-        <p className="text-red-600 text-sm">{state.message}</p>
+        <p className="text-destructive text-sm">{state.message}</p>
       ) : null}
     </form>
   );
@@ -33,9 +33,11 @@ function UrlField() {
         required
         disabled={pending}
         placeholder="https://www.zillow.com/homedetails/..."
-        className="border border-gray-300 rounded p-2 font-mono text-sm disabled:bg-gray-100 disabled:text-gray-500"
+        className="border border-border bg-input-background text-foreground rounded p-2 font-mono text-sm placeholder:text-muted-foreground disabled:opacity-60"
       />
-      <span className="text-xs text-gray-500">Zillow or Apartments.com.</span>
+      <span className="text-xs text-muted-foreground">
+        Zillow or Apartments.com.
+      </span>
     </label>
   );
 }
@@ -47,13 +49,13 @@ function SubmitButton() {
       <button
         type="submit"
         disabled={pending}
-        className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded px-4 py-2 inline-flex items-center gap-2"
+        className="bg-primary hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed text-primary-foreground rounded px-4 py-2 inline-flex items-center gap-2"
       >
         {pending ? <Spinner /> : null}
         {pending ? "Adding listing…" : "Add listing"}
       </button>
       {pending ? (
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Fetching the listing and saving photos. Usually 10–15 seconds — please
           don&apos;t close this tab.
         </p>
