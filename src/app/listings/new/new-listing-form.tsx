@@ -13,19 +13,7 @@ export function NewListingForm() {
   );
   return (
     <form action={formAction} className="flex flex-col gap-4">
-      <label className="flex flex-col gap-2">
-        <span className="text-sm font-medium">Listing URL</span>
-        <input
-          type="url"
-          name="url"
-          required
-          placeholder="https://www.zillow.com/homedetails/..."
-          className="border border-gray-300 rounded p-2 font-mono text-sm"
-        />
-        <span className="text-xs text-gray-500">
-          Zillow or Apartments.com.
-        </span>
-      </label>
+      <UrlField />
       <SubmitButton />
       {state.kind === "error" ? (
         <p className="text-red-600 text-sm">{state.message}</p>
@@ -34,15 +22,67 @@ export function NewListingForm() {
   );
 }
 
+function UrlField() {
+  const { pending } = useFormStatus();
+  return (
+    <label className="flex flex-col gap-2">
+      <span className="text-sm font-medium">Listing URL</span>
+      <input
+        type="url"
+        name="url"
+        required
+        disabled={pending}
+        placeholder="https://www.zillow.com/homedetails/..."
+        className="border border-gray-300 rounded p-2 font-mono text-sm disabled:bg-gray-100 disabled:text-gray-500"
+      />
+      <span className="text-xs text-gray-500">Zillow or Apartments.com.</span>
+    </label>
+  );
+}
+
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="self-start bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded px-4 py-2"
+    <div className="flex flex-col gap-2 items-start">
+      <button
+        type="submit"
+        disabled={pending}
+        className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded px-4 py-2 inline-flex items-center gap-2"
+      >
+        {pending ? <Spinner /> : null}
+        {pending ? "Adding listing…" : "Add listing"}
+      </button>
+      {pending ? (
+        <p className="text-sm text-gray-600">
+          Fetching the listing and saving photos. Usually 10–15 seconds — please
+          don&apos;t close this tab.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg
+      className="animate-spin h-4 w-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
     >
-      {pending ? "Adding…" : "Add listing"}
-    </button>
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+      />
+    </svg>
   );
 }
