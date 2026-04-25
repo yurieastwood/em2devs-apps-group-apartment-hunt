@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { fetchListingHtml } from "@/lib/extract/fetch-listing";
-import { profileForUrl } from "@/lib/extract/profiles";
+import { fetchListing } from "@/lib/extract/fetch-listing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const PROBE_URLS = [
   "https://www.zillow.com/homedetails/2346-W-Grand-Ave-1N-Chicago-IL-60612/2070907398_zpid/",
@@ -12,8 +11,24 @@ const PROBE_URLS = [
 ];
 
 type ProbeResult =
-  | { url: string; ok: true; status: number; title: string | null; bytes: number; ms: number }
-  | { url: string; ok: false; status?: number; error: string; ms: number };
+  | {
+      url: string;
+      ok: true;
+      status: number;
+      title: string | null;
+      bytes: number;
+      usedProfile: string;
+      triedProfiles: string[];
+      ms: number;
+    }
+  | {
+      url: string;
+      ok: false;
+      status?: number;
+      error: string;
+      triedProfiles: string[];
+      ms: number;
+    };
 
 function extractTitle(html: string): string | null {
   const match = html.match(/<title[^>]*>([^<]*)<\/title>/i);
@@ -23,19 +38,35 @@ function extractTitle(html: string): string | null {
 async function probe(url: string): Promise<ProbeResult> {
   const started = Date.now();
   try {
-    const { status, html } = await fetchListingHtml(url, {
-      profile: profileForUrl(url),
-    });
+    const { status, html, usedProfile, triedProfiles } =
+      await fetchListing(url);
     const ms = Date.now() - started;
     if (status === 200) {
-      return { url, ok: true, status, title: extractTitle(html), bytes: html.length, ms };
+      return {
+        url,
+        ok: true,
+        status,
+        title: extractTitle(html),
+        bytes: html.length,
+        usedProfile,
+        triedProfiles,
+        ms,
+      };
     }
-    return { url, ok: false, status, error: `HTTP ${status}`, ms };
+    return {
+      url,
+      ok: false,
+      status,
+      error: `HTTP ${status} after trying ${triedProfiles.join(", ")}`,
+      triedProfiles,
+      ms,
+    };
   } catch (err) {
     return {
       url,
       ok: false,
       error: err instanceof Error ? err.message : String(err),
+      triedProfiles: [],
       ms: Date.now() - started,
     };
   }

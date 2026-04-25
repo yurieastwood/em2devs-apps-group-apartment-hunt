@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { promises as fs } from "node:fs";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
+import { profileCandidates } from "./profiles";
 
 const DEFAULT_BIN = path.join(process.cwd(), "bin", "curl-impersonate");
 
@@ -15,6 +16,11 @@ export type FetchOptions = {
 export type FetchListingResult = {
   status: number;
   html: string;
+};
+
+export type FetchListingResultWithProfile = FetchListingResult & {
+  usedProfile: string;
+  triedProfiles: string[];
 };
 
 export async function fetchListingHtml(
@@ -78,4 +84,34 @@ export async function fetchListingHtml(
   } finally {
     await fs.unlink(bodyFile).catch(() => {});
   }
+}
+
+// Higher-level: tries profile candidates in order, returns the first that
+// yields HTTP 200. If none succeeds, returns the last attempted result so
+// callers can inspect status/html for the failure.
+export async function fetchListing(
+  url: string,
+  opts: Omit<FetchOptions, "profile"> = {},
+): Promise<FetchListingResultWithProfile> {
+  const candidates = profileCandidates(url);
+  const tried: string[] = [];
+  let lastResult: FetchListingResult | undefined;
+
+  for (const profile of candidates) {
+    tried.push(profile);
+    const result = await fetchListingHtml(url, { ...opts, profile });
+    lastResult = result;
+    if (result.status === 200) {
+      return { ...result, usedProfile: profile, triedProfiles: tried };
+    }
+  }
+
+  if (!lastResult) {
+    throw new Error(`no profile candidates configured for ${url}`);
+  }
+  return {
+    ...lastResult,
+    usedProfile: tried[tried.length - 1],
+    triedProfiles: tried,
+  };
 }
