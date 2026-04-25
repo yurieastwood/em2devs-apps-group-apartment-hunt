@@ -7,6 +7,7 @@ import { listingPhotos, listings } from "@/db/schema";
 import { urlFor } from "@/lib/storage/r2";
 import { PhotoCarousel } from "@/components/photo-carousel";
 import { DeleteButton } from "./delete-button";
+import { CommentsSection } from "./comments-section";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -134,6 +135,8 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
           </>
         ) : null}
       </div>
+
+      <CommentsSection listingId={listing.id} />
     </main>
   );
 }

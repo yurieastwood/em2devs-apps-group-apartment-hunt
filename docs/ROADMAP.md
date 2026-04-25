@@ -58,8 +58,8 @@ Find, edit, react to and comment on saved listings.
 - ✅ Lightbox single-slide fix: hide prev/next buttons and disable wrap-around keyboard nav when there's only one photo
 - ✅ Owner-only **Delete listing** on detail page (confirm dialog, scoped query, R2 batch cleanup)
 - ✅ Owner-only **Edit listing** form (`/listings/[id]/edit`) — same form doubles as manual-correction for bad extractions
-- ✅ `comments` + `reactions` tables (schema in place; UI pending)
-- 📋 Comments UI on detail page (post + thread)
+- ✅ `comments` + `reactions` tables (schema in place)
+- ✅ Comments UI on detail page — post + thread, author avatar/name from Clerk, owner-only delete
 - 📋 Reactions UI on detail page (emoji picker, count + who reacted)
 
 ## Slice 3 — Access control 📋
