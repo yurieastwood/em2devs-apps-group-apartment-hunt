@@ -1,43 +1,14 @@
 import type { ListingPhoto, ParsedListing } from "../types";
+import {
+  asNum,
+  asString,
+  extractFirstJsonLd,
+  get,
+  safeJsonParse,
+  type Json,
+} from "./util";
 
 const ZPID_RE = /\/(\d+)_zpid\//;
-
-type Json = unknown;
-
-function safeJsonParse(s: string): Json {
-  try {
-    return JSON.parse(s);
-  } catch {
-    return null;
-  }
-}
-
-function get(obj: Json, ...keys: (string | number)[]): Json {
-  let cur: Json = obj;
-  for (const k of keys) {
-    if (cur == null || typeof cur !== "object") return undefined;
-    cur = (cur as Record<string | number, Json>)[k];
-  }
-  return cur;
-}
-
-function asNum(v: Json): number | null {
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  if (typeof v === "string") {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  }
-  return null;
-}
-
-function asString(v: Json): string | null {
-  return typeof v === "string" ? v : null;
-}
-
-function extractFirstJsonLd(html: string): Json {
-  const m = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
-  return m ? safeJsonParse(m[1]) : null;
-}
 
 function extractNextData(html: string): Json {
   const m = html.match(
