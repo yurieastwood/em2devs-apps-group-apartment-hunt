@@ -8,6 +8,22 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/**": ["./bin/curl-impersonate"],
   },
+
+  // Backstop the noindex/nofollow meta tag with a header so anything that
+  // bypasses HTML parsing (e.g. fetch by URL, image crawlers) also sees it.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "X-Robots-Tag",
+            value: "noindex, nofollow, noarchive, nosnippet, noimageindex",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
