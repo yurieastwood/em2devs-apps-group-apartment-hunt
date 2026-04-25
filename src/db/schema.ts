@@ -69,7 +69,52 @@ export const listingPhotos = pgTable(
   }),
 );
 
+export const comments = pgTable(
+  "comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    listingId: uuid("listing_id")
+      .notNull()
+      .references(() => listings.id, { onDelete: "cascade" }),
+    authorClerkUserId: text("author_clerk_user_id").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    listingIdx: index("comments_listing_idx").on(t.listingId, t.createdAt),
+  }),
+);
+
+export const reactions = pgTable(
+  "reactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    listingId: uuid("listing_id")
+      .notNull()
+      .references(() => listings.id, { onDelete: "cascade" }),
+    authorClerkUserId: text("author_clerk_user_id").notNull(),
+    emoji: text("emoji").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    uniqIdx: uniqueIndex("reactions_uniq_idx").on(
+      t.listingId,
+      t.authorClerkUserId,
+      t.emoji,
+    ),
+    listingIdx: index("reactions_listing_idx").on(t.listingId),
+  }),
+);
+
 export type Listing = typeof listings.$inferSelect;
 export type NewListing = typeof listings.$inferInsert;
 export type ListingPhoto = typeof listingPhotos.$inferSelect;
 export type NewListingPhoto = typeof listingPhotos.$inferInsert;
+export type Comment = typeof comments.$inferSelect;
+export type NewComment = typeof comments.$inferInsert;
+export type Reaction = typeof reactions.$inferSelect;
+export type NewReaction = typeof reactions.$inferInsert;
