@@ -1,0 +1,48 @@
+"use server";
+
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import {
+  createListingFromUrl,
+  type CreateListingError,
+} from "@/lib/listings/create-listing-from-url";
+
+export type ActionState = { kind: "idle" } | { kind: "error"; message: string };
+
+export const initialActionState: ActionState = { kind: "idle" };
+
+function messageFor(err: CreateListingError): string {
+  switch (err.kind) {
+    case "invalid_url":
+      return "That doesn't look like a valid URL.";
+    case "unsupported_host":
+      return `We don't support ${err.host} yet — try a Zillow or Apartments.com URL.`;
+    case "fetch_failed":
+      return `Could not fetch the listing (HTTP ${err.status}). The site may have updated its bot detection — try again later.`;
+    case "duplicate":
+      return "This listing was already added."; // unreachable: duplicates redirect below
+    case "unknown":
+      return err.message;
+  }
+}
+
+export async function createListingAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { userId } = await auth();
+  if (!userId) return { kind: "error", message: "You're not signed in." };
+
+  const url = String(formData.get("url") ?? "").trim();
+  if (!url) return { kind: "error", message: "Paste a listing URL first." };
+
+  const result = await createListingFromUrl(url, userId);
+
+  if (result.ok) {
+    redirect(`/listings/${result.id}`);
+  }
+  if (result.error.kind === "duplicate") {
+    redirect(`/listings/${result.error.existingId}`);
+  }
+  return { kind: "error", message: messageFor(result.error) };
+}
