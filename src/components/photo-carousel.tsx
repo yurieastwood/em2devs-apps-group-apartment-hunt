@@ -87,6 +87,7 @@ export function PhotoCarousel({ photos }: Props) {
         index={lightboxIndex ?? 0}
         close={() => setLightboxIndex(null)}
         slides={photos.map((p) => ({ src: p.url, alt: p.alt }))}
+        carousel={photos.length <= 1 ? { finite: true } : undefined}
         render={
           photos.length <= 1
             ? { buttonPrev: () => null, buttonNext: () => null }

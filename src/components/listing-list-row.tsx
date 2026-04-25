@@ -60,6 +60,7 @@ export function ListingListRow({
           open={open}
           close={() => setOpen(false)}
           slides={[{ src: coverUrl, alt: address }]}
+          carousel={{ finite: true }}
           render={{ buttonPrev: () => null, buttonNext: () => null }}
         />
       ) : null}
