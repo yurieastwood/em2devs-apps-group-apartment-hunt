@@ -100,7 +100,10 @@ export async function createListingFromUrl(
     })
     .returning({ id: listings.id });
 
-  const rehosted = await rehostListingPhotos(inserted.id, parsed.photos);
+  const { photos: rehosted, errors: photoErrors } = await rehostListingPhotos(
+    inserted.id,
+    parsed.photos,
+  );
   if (rehosted.length > 0) {
     await db.insert(listingPhotos).values(
       rehosted.map((p) => ({
@@ -113,6 +116,14 @@ export async function createListingFromUrl(
         height: p.height ?? null,
       })),
     );
+  }
+  if (photoErrors.length > 0) {
+    await db
+      .update(listings)
+      .set({
+        raw: { ...(parsed.raw as object), photoErrors: photoErrors.slice(0, 10) },
+      })
+      .where(eq(listings.id, inserted.id));
   }
 
   return { ok: true, id: inserted.id };

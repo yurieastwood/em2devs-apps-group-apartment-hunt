@@ -17,6 +17,28 @@ function fmtSqft(n: number | null): string | null {
   return n == null ? null : `${n.toLocaleString("en-US")} sq ft`;
 }
 
+function PhotoErrorsSection({ raw }: { raw: unknown }) {
+  if (!raw || typeof raw !== "object") return null;
+  const errs = (raw as { photoErrors?: { url: string; reason: string }[] })
+    .photoErrors;
+  if (!Array.isArray(errs) || errs.length === 0) return null;
+  return (
+    <details className="mb-6 text-sm">
+      <summary className="cursor-pointer text-destructive">
+        {errs.length} photo{errs.length === 1 ? "" : "s"} couldn&apos;t be saved
+      </summary>
+      <ul className="mt-2 space-y-2 text-muted-foreground">
+        {errs.map((e, i) => (
+          <li key={i} className="break-all">
+            <code className="font-mono">{e.url}</code>
+            <br />→ {e.reason}
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 export default async function ListingDetailPage({ params }: { params: Params }) {
   const { id } = await params;
 
@@ -80,6 +102,9 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
           ))}
         </div>
       ) : null}
+
+      <PhotoErrorsSection raw={listing.raw} />
+
 
       {listing.description ? (
         <section className="mb-6">

@@ -11,6 +11,16 @@ export type RehostedPhoto = {
   height?: number;
 };
 
+export type PhotoError = {
+  url: string;
+  reason: string;
+};
+
+export type RehostResult = {
+  photos: RehostedPhoto[];
+  errors: PhotoError[];
+};
+
 const EXT_BY_CONTENT_TYPE: Record<string, string> = {
   "image/jpeg": ".jpg",
   "image/png": ".png",
@@ -18,90 +28,116 @@ const EXT_BY_CONTENT_TYPE: Record<string, string> = {
   "image/gif": ".gif",
 };
 
-// Some image CDNs (e.g. Akamai-fronted images1.apartments.com) reject plain
-// requests from datacenter IPs and only accept TLS-impersonated traffic.
-// Try plain fetch first for speed, then fall back to a small set of
-// curl-impersonate profiles we've seen pass.
 const FALLBACK_PROFILES = ["firefox147", "chrome145", "safari260"];
-
 const PHOTO_CONCURRENCY = 4;
 
 type Downloaded = { buffer: Buffer; contentType: string };
+type DownloadResult =
+  | { ok: true; data: Downloaded }
+  | { ok: false; reason: string };
 
-async function downloadPhoto(url: string): Promise<Downloaded | null> {
+async function downloadPhoto(url: string): Promise<DownloadResult> {
+  const tries: string[] = [];
+
   try {
     const res = await fetch(url);
     if (res.ok) {
       const buffer = Buffer.from(await res.arrayBuffer());
       const contentType =
         res.headers.get("content-type")?.split(";")[0]?.trim() ?? "image/jpeg";
-      return { buffer, contentType };
+      return { ok: true, data: { buffer, contentType } };
     }
-  } catch {
-    // fall through
+    tries.push(`plain HTTP ${res.status}`);
+  } catch (err) {
+    tries.push(
+      `plain error: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 
-  const referer = (() => {
-    try {
-      return new URL(url).origin;
-    } catch {
-      return undefined;
-    }
-  })();
+  let referer: string | undefined;
+  try {
+    referer = new URL(url).origin;
+  } catch {
+    // ignore
+  }
 
   for (const profile of FALLBACK_PROFILES) {
     try {
       const res = await fetchUrlBinary(url, { profile, referer });
       if (res.status === 200) {
         return {
-          buffer: res.buffer,
-          contentType: res.contentType ?? "image/jpeg",
+          ok: true,
+          data: {
+            buffer: res.buffer,
+            contentType: res.contentType ?? "image/jpeg",
+          },
         };
       }
-    } catch {
-      // try next
+      tries.push(`${profile} HTTP ${res.status}`);
+    } catch (err) {
+      tries.push(
+        `${profile}: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 
-  return null;
+  return { ok: false, reason: tries.join(" | ") };
 }
+
+type RehostOneResult =
+  | { ok: true; photo: RehostedPhoto }
+  | { ok: false; url: string; reason: string };
 
 async function rehostOne(
   listingId: string,
   photo: ListingPhoto,
   sortOrder: number,
-): Promise<RehostedPhoto | null> {
+): Promise<RehostOneResult> {
+  const dl = await downloadPhoto(photo.url);
+  if (!dl.ok) {
+    return { ok: false, url: photo.url, reason: `download: ${dl.reason}` };
+  }
+  const ext = EXT_BY_CONTENT_TYPE[dl.data.contentType] ?? ".jpg";
+  const key = `listings/${listingId}/${String(sortOrder).padStart(3, "0")}${ext}`;
   try {
-    const dl = await downloadPhoto(photo.url);
-    if (!dl) return null;
-    const ext = EXT_BY_CONTENT_TYPE[dl.contentType] ?? ".jpg";
-    const key = `listings/${listingId}/${String(sortOrder).padStart(3, "0")}${ext}`;
-    await putObject(key, dl.buffer, dl.contentType);
+    await putObject(key, dl.data.buffer, dl.data.contentType);
+  } catch (err) {
     return {
+      ok: false,
+      url: photo.url,
+      reason: `r2 put: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+  return {
+    ok: true,
+    photo: {
       sortOrder,
       r2Key: key,
-      contentType: dl.contentType,
+      contentType: dl.data.contentType,
       originalUrl: photo.url,
       width: photo.width,
       height: photo.height,
-    };
-  } catch (err) {
-    console.error(`photo rehost failed for ${photo.url}:`, err);
-    return null;
-  }
+    },
+  };
 }
 
 export async function rehostListingPhotos(
   listingId: string,
   photos: ListingPhoto[],
-): Promise<RehostedPhoto[]> {
-  const out: RehostedPhoto[] = [];
+): Promise<RehostResult> {
+  const successes: RehostedPhoto[] = [];
+  const errors: PhotoError[] = [];
+
   for (let i = 0; i < photos.length; i += PHOTO_CONCURRENCY) {
     const batch = photos.slice(i, i + PHOTO_CONCURRENCY);
     const results = await Promise.all(
       batch.map((p, j) => rehostOne(listingId, p, i + j)),
     );
-    for (const r of results) if (r) out.push(r);
+    for (const result of results) {
+      if (result.ok) successes.push(result.photo);
+      else errors.push({ url: result.url, reason: result.reason });
+    }
   }
-  return out;
+
+  return { photos: successes, errors };
 }
