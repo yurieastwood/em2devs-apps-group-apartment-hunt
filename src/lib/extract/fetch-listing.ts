@@ -18,15 +18,27 @@ export type FetchListingResult = {
   html: string;
 };
 
+export type FetchBinaryResult = {
+  status: number;
+  contentType: string | null;
+  buffer: Buffer;
+};
+
 export type FetchListingResultWithProfile = FetchListingResult & {
   usedProfile: string;
   triedProfiles: string[];
 };
 
-export async function fetchListingHtml(
+type CurlResult = {
+  status: number;
+  contentType: string | null;
+  bodyFile: string;
+};
+
+async function curlFetch(
   url: string,
   opts: FetchOptions = {},
-): Promise<FetchListingResult> {
+): Promise<CurlResult> {
   const {
     profile = "chrome146",
     referer,
@@ -34,7 +46,7 @@ export async function fetchListingHtml(
     timeoutMs = 20_000,
   } = opts;
   const bin = process.env.CURL_IMPERSONATE_BIN ?? DEFAULT_BIN;
-  const bodyFile = path.join("/tmp", `ci-${randomUUID()}.html`);
+  const bodyFile = path.join("/tmp", `ci-${randomUUID()}`);
 
   const args: string[] = [
     "--impersonate",
@@ -47,13 +59,13 @@ export async function fetchListingHtml(
     "--output",
     bodyFile,
     "--write-out",
-    "%{http_code}",
+    "%{http_code}\n%{content_type}",
   ];
   if (referer) args.push("--referer", referer);
   if (cookieJar) args.push("--cookie", cookieJar, "--cookie-jar", cookieJar);
   args.push(url);
 
-  const status = await new Promise<number>((resolve, reject) => {
+  return new Promise<CurlResult>((resolve, reject) => {
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];
     const child = spawn(bin, args);
@@ -69,18 +81,39 @@ export async function fetchListingHtml(
         );
         return;
       }
-      const parsed = Number(Buffer.concat(stdout).toString().trim());
-      if (!Number.isFinite(parsed)) {
+      const lines = Buffer.concat(stdout).toString().trim().split("\n");
+      const status = Number(lines[0]);
+      const contentType = lines[1]?.split(";")[0]?.trim() || null;
+      if (!Number.isFinite(status)) {
         reject(new Error(`could not parse http status from curl stdout`));
         return;
       }
-      resolve(parsed);
+      resolve({ status, contentType, bodyFile });
     });
   });
+}
 
+export async function fetchListingHtml(
+  url: string,
+  opts: FetchOptions = {},
+): Promise<FetchListingResult> {
+  const { status, bodyFile } = await curlFetch(url, opts);
   try {
     const html = await fs.readFile(bodyFile, "utf8");
     return { status, html };
+  } finally {
+    await fs.unlink(bodyFile).catch(() => {});
+  }
+}
+
+export async function fetchUrlBinary(
+  url: string,
+  opts: FetchOptions = {},
+): Promise<FetchBinaryResult> {
+  const { status, contentType, bodyFile } = await curlFetch(url, opts);
+  try {
+    const buffer = await fs.readFile(bodyFile);
+    return { status, contentType, buffer };
   } finally {
     await fs.unlink(bodyFile).catch(() => {});
   }
