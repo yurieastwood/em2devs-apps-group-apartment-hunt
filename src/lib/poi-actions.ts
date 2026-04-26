@@ -4,6 +4,11 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { geocodeAddress } from "./geocode";
 import { deletePoiById, insertPoi, updatePoi } from "./points-of-interest";
+import {
+  ensureDistances,
+  getAllListingIds,
+  invalidateDistancesForPoi,
+} from "./places/poi-distances";
 
 export type PoiState =
   | { kind: "idle" }
@@ -35,13 +40,18 @@ export async function addPoiAction(
     };
   }
 
-  await insertPoi({
+  const inserted = await insertPoi({
     ownerClerkUserId: userId,
     label,
     address: geo.displayName,
     lat: geo.lat,
     lng: geo.lng,
   });
+
+  const allListingIds = await getAllListingIds();
+  if (allListingIds.length > 0) {
+    await ensureDistances(allListingIds, [inserted.id]);
+  }
 
   revalidatePath("/");
   return { kind: "saved" };
@@ -75,6 +85,12 @@ export async function updatePoiAction(
     lng: geo.lng,
   });
   if (!updated) return { kind: "error", message: "Couldn't update." };
+
+  await invalidateDistancesForPoi(poiId);
+  const allListingIds = await getAllListingIds();
+  if (allListingIds.length > 0) {
+    await ensureDistances(allListingIds, [poiId]);
+  }
 
   revalidatePath("/");
   return { kind: "saved" };
