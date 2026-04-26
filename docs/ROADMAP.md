@@ -2,17 +2,11 @@
 
 A personal, family-scoped app for sharing apartment listings during a lease hunt.
 
-## Stack & cross-cutting decisions
+## Stack
 
-- **Frontend & API**: Next.js 16 (App Router, src dir) + TypeScript + Tailwind v4
-- **Database**: Neon Postgres (serverless) + Drizzle ORM (HTTP driver)
-- **Auth**: Clerk — currently the Development instance; Production instance once a custom-domain DNS verification is in place
-- **Object storage**: Cloudflare R2 (S3-compatible)
-- **Hosting**: Vercel (Hobby tier; custom domain bound)
-- **Listing scraping**: `curl-impersonate` (Chrome / Firefox profiles) bundled with the serverless function — TLS fingerprint defeats PerimeterX
-- **Architecture**: Vertical Slices + Clean Code; Conventional Commits
+Next.js 16 + TypeScript + Tailwind on Vercel · Neon Postgres + Drizzle ORM · Clerk auth + Organizations · Cloudflare R2 storage · Google Maps · `curl-impersonate` for source-page scraping.
 
-## Status legend
+## Status
 
 - ✅ Done and live
 - 🔄 In progress
@@ -23,124 +17,76 @@ A personal, family-scoped app for sharing apartment listings during a lease hunt
 
 ## Slice 0 — Infrastructure ✅
 
-Project foundations and account wiring.
-
-- ✅ Next.js scaffold (TypeScript, Tailwind, ESLint, App Router, src dir, `@/*` import alias)
-- ✅ Drizzle ORM + `@neondatabase/serverless` client (lazy-initialized via Proxy so build doesn't need `DATABASE_URL`)
-- ✅ Clerk middleware (`auth.protect()`), `<ClerkProvider>` in root layout, sign-in / sign-up catch-all routes
-- ✅ Cloudflare R2 module (`putObject`, `urlFor`, `deleteObjects`)
-- ✅ `.env.local.example` documenting all required env vars; Vercel env vars wired
-- ✅ GitHub repo + Vercel auto-deploy on push to `main`
-- ✅ Custom domain (`group-apartment-hunt.xyz`) bound to Vercel
+Project foundations: Next.js scaffold, database, auth, object storage, hosting, custom domain.
 
 ## Slice 1 — Listing-from-URL ✅
 
-Paste a Zillow or Apartments.com URL → structured listing with rehosted photos.
-
-- ✅ Bundle `curl-impersonate` Linux x86_64 binary; `outputFileTracingIncludes` ships it with every server route
-- ✅ `/api/health/scrape` health endpoint (de-risk: verify TLS-impersonated fetches pass from Vercel IPs)
-- ✅ Multi-profile retry per host (`profileCandidates`) — handles profile drift as bot rules update
-- ✅ `listings` + `listing_photos` schema with cascade delete and indexes
-- ✅ Zillow parser: JSON-LD (Schema.org `RealEstateListing`) + `__NEXT_DATA__.gdpClientCache.property`
-- ✅ Apartments.com parser: JSON-LD `@graph[0].mainEntity` + the inline `ProfileStartup({ rentals: [...] })` block for beds/baths/sqft
-- ✅ ApartmentList.com parser: JSON-LD `Apartment` block for beds/baths + `__NEXT_DATA__.props.pageProps.component.listing` for address, geo, price, sqft, description, and `all_photos[].id` (Cloudinary asset ids → reconstructed via `c_fit,h_1080,q_auto,f_auto` transform). Wired into `profileCandidates`, `PARSERS`, the bulk-import host filter, and the form helper texts.
-- ✅ Photo rehoster: plain `fetch()` first (Zillow CDN), `curl-impersonate` fallback (Apartments.com / Akamai); batches of 4 in parallel
-- ✅ `createListingFromUrl` orchestrator: validate URL → dedup → fetch → parse → insert listing → rehost photos → insert photo rows
-- ✅ Paste-URL form (`/listings/new`) with `useFormStatus` progress UI: spinner + "10–15 seconds — please don't close this tab"
-- ✅ Detail page (`/listings/[id]`) with embla photo carousel + yet-another-react-lightbox fullscreen viewer
-- ✅ Photo rehost-error surfacing: failures recorded in `listings.raw.photoErrors`; collapsible diagnostic block on detail page
+Paste a Zillow / Apartments.com / ApartmentList URL → a structured listing with rehosted photos and a detail page (carousel, lightbox, schools, photo errors).
 
 ## Slice 2 — Browse + Manage + Engage ✅
 
-Find, edit, react to and comment on saved listings.
-
-- ✅ Browse index at `/` — cards with cover photo, address, beds/baths/price; sorted newest first
-- ✅ Cards / List view toggle persisted via cookie (no flicker on first paint); list view's "Show photo" opens the cover in a lightbox modal
-- ✅ Lightbox single-slide fix: hide prev/next buttons and disable wrap-around keyboard nav when there's only one photo
-- ✅ Owner-only **Delete listing** on detail page (confirm dialog, scoped query, R2 batch cleanup)
-- ✅ Owner-only **Edit listing** form (`/listings/[id]/edit`) — same form doubles as manual-correction for bad extractions
-- ✅ `comments` + `reactions` tables (schema in place)
-- ✅ Comments UI on detail page — post + thread, author avatar/name from Clerk, owner-only delete
-- ✅ Reactions UI on detail page — fixed emoji set (❤️ 👍 🔥 😍 🤔 👎), click to toggle, count + your-own-reaction highlighted
-- ✅ Home-page map — Google Maps via `@vis.gl/react-google-maps` (swapped from the initial OpenStreetMap + Leaflet impl). Renders the user's home as a 🏠 emoji marker and listings as default blue pins; click a listing pin to open an InfoWindow with a link to its detail page. Auto-fits bounds to include all positions. The provider boundary is one file (`home-map.tsx` dynamic-imports `home-map-google.tsx`); to switch providers again, write a sibling impl with the same prop shape and change the import. Geocoding for the user's home address still uses Nominatim (free, no API budget). Requires `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` in env (with billing enabled on the GCP project); falls back to a "key not configured" placeholder when missing.
-- ✅ Nearby schools — parsed directly from each listing's source page during import (Zillow's `property.schools`, Apartments.com's school cards, ApartmentList's `component.schools`). Stored per listing in `listing_schools`. Detail page renders school name → GreatSchools link, type (Public/Charter/Private/Magnet), grade range (PK-8, 9-12, etc.), distance ("0.3 mi away") or "Attendance zone" indicator, and a color-coded rating badge (red 1-3 / yellow 4-6 / green 7-10). This replaced the earlier Overpass-based pre-K-only feature, which was removed: scraping the source pages gives us the full set (with GreatSchools ratings included) instead of just pre-K coverage from OSM.
-- ✅ Schools filter + sort UI on detail page — client-side controls for sort (nearest / farthest / highest / lowest rating / name), filter chips for type (Public, Private, Charter, Magnet — auto-derived from the listing's data), grade band (PK / K / Elementary / Middle / High — derived by parsing each school's grade-range string and computing band overlap), and minimum rating threshold (Any / 4+ / 7+ / 9+).
-- ✅ Home-page listings browser — sort by newest / oldest / price (asc/desc) / most beds / most baths / nearest PK school rating (high→low). Filter chips for min beds (Any / 1+ / 2+ / 3+ / 4+), min baths (Any / 1+ / 2+ / 3+), max price (Any / <$2k / <$3k / <$4k / <$5k), and min PK-school rating (Any / 4+ / 7+ / 9+). Each listing's "nearest PK school rating" is derived server-side: filter `listing_schools` to grade ranges starting with PK, then per listing pick the row with the smallest distance_miles (tie-broken by sort_order — parsers preserve source-page order, which is itself distance-sorted on sites without numeric distances) and use ITS rating.
-- ✅ Inline delete on home-page cards / list rows — owner-only "Delete" button on each item. The shared `DeleteListingButton` is now used by both the home page (no navigation, page revalidates and the row disappears) and the detail page (navigates to `/` after the action). The action no longer redirects; callers decide.
+Listings index with filter + sort + view toggle, edit, delete, comments, reactions, Google Maps with home + listing pins, nearby-schools list with GreatSchools ratings.
 
 ## Slice 2.5 — Bulk import ✅
 
-Quality-of-life addition between major slices.
-
-- ✅ Bulk import — second tab on `/listings/new?mode=bulk` (single-URL is the default tab). Paste URLs as plain text or HTML with anchors; Zillow / Apartments.com URLs are auto-extracted (regex match + URL parse + supported-host filter, deduped). Client iterates the list calling `importListingAction` per URL, showing per-row status (pending → processing → done/failed). Reuses `createListingFromUrl` end-to-end so dedup, parsing, and photo rehosting work the same as single-add.
+Paste many URLs on `/listings/new` (HTML or plain text); each one is processed sequentially with per-row status.
 
 ## Slice 2.6 — Auth-gated health endpoint ✅
 
-Lock down the diagnostic so it's not a free public scraping endpoint.
-
-- ✅ `/api/health/scrape` accepts either a signed-in Clerk session OR an `Authorization: Bearer <HEALTH_AUTH_TOKEN>` header. Anything else returns `401` with `WWW-Authenticate: Bearer realm="health"`. Constant-time comparison (`crypto.timingSafeEqual`) on the token. The route stays in the public middleware matcher so the Bearer path can reach the handler; auth happens inside the handler.
+`/api/health/scrape` requires a Clerk session or an `Authorization: Bearer <token>` header.
 
 ## Slice 2.7 — Points of interest with transit distances ✅
 
-Per-user POIs (Work, school, family) with transit-based distance to every listing.
-
-- ✅ Schema: `points_of_interest` (per-user, label + address + lat/lng) and `listing_poi_distances` (cached transit duration + distance per (listing, poi)).
-- ✅ POI CRUD UI in the home-page settings area: list, add, inline edit, delete. Address geocoded via Nominatim (same as home address) and stored as lat/lng.
-- ✅ Map markers: green AdvancedMarker Pin per POI, alongside the 🏠 home marker and blue listing pins. Auto-fit bounds include POI positions. InfoWindow on click.
-- ✅ Google Distance Matrix integration (server-side, mode=transit, `departure_time=now`). Separate `GOOGLE_MAPS_SERVER_KEY` env var (the public Maps JS key won't work server-to-server because of HTTP-referrer restrictions). Eager compute on POI add (POI × all listings) and on listing add (new listing × all POIs); results cached in `listing_poi_distances` so subsequent renders don't pay the API cost.
-- ✅ Display: home cards/rows show "🚌 Work: 25 min" per POI under the BR/BA/price line; listing detail page renders a "Transit times" section listing each POI with duration + miles. Pure formatters in `src/lib/transit-format.ts` so server and client components can share them.
-
-## Slice 3.1 — Tags / labels ✅
-
-User-defined labels for organizing the hunt (favorite, tour scheduled, rejected, custom).
-
-- ✅ Schema: `labels` (id, owner_clerk_user_id, org_id nullable, name, color, created_at; unique by scope+name) and `listing_labels` join (composite PK on listing_id + label_id, cascade-deletes).
-- ✅ CRUD actions and lib helpers in `src/lib/listings/labels{,-actions}.ts`. Labels live in the same scope as listings (org or personal).
-- ✅ Detail-page editor (`<ListingLabelsSection>` + `<LabelsEditor>`): chip per applied label with × to remove, "+ Add label" opens a picker showing unapplied scope labels, "+ New label" inline form (name + 8-color palette).
-- ✅ Home page: each card / list row renders the listing's labels as colored chips; controls bar gains a labels filter chip group (multi-select with OR semantics — a listing matches if it has any of the selected labels).
-- 💡 Future: bulk-apply labels from the home page (select multiple listings → apply / remove a label across all).
+Add POIs (Work, school, family); each listing shows the transit time from itself to every POI.
 
 ## Slice 3 — Access control 🔄
 
-Invite-only, family-scoped access.
+Family-scoped visibility via Clerk Organizations and faster image loads via the public R2 bucket.
 
-- ✅ R2 public bucket binding + `R2_PUBLIC_URL_BASE` env — replace per-photo presigned URLs with direct URLs (faster page loads, no S3 SDK calls per render). Includes a fix to `urlFor()` to encode key segments individually so path slashes survive.
-- ✅ Clerk Organizations integration — `<OrganizationSwitcher />` in the app header; `org_id` column on `listings` (nullable for personal-mode legacy rows); reads/writes scoped via `listingScope` helper (in an org → filter by org_id; personal → owner-and-org_id-IS-NULL); detail page, edit page, and all mutating actions (delete, edit, comment, reaction) gate access via `userCanAccessListing`. Comments and reactions inherit visibility from their parent listing's scope.
-- ✅ Home address + points-of-interest are also org-scoped — replaced the per-user `user_settings` table with a scope-aware `home_settings` table (one shared home per org, or per-user in personal mode); `points_of_interest` gains `org_id` so POIs are now shared across the family. POI distance fan-out is scope-aware too: when a member adds a POI, distances are computed against listings in the same scope (org or personal).
-- 📋 Backfill UI for moving pre-orgs personal listings into an active org (today the user runs `UPDATE listings SET org_id = '<id>' WHERE owner_clerk_user_id = '<id>' AND org_id IS NULL` in Neon SQL)
-- 📋 Invite flow (Clerk dashboard already supports invitation emails; we use the OrganizationSwitcher's built-in member management UI)
-- 📋 Disable public sign-up in Clerk so only invited members can join
+- ✅ R2 public bucket binding
+- ✅ Listings, comments, reactions org-scoped
+- ✅ Home address and POIs shared with the family
+- 📋 Backfill UI for legacy personal-mode data
+- 📋 Disable public sign-up in Clerk
 
-## Backlog / future polish 💡
+## Slice 3.1 — Tags / labels ✅
 
-Not yet scoped to a slice; pull from this list when ready.
-
-- Notifications when a family member adds a listing (email via Resend, or in-app)
-- Manual entry (no source URL — just type fields) for sites we don't parse
-- Tags / labels on listings ("favorite", "tour scheduled", "rejected", custom)
-- Map view (cluster pins by city, hover to see card)
-- Background photo rehosting + streaming progress so the create action returns instantly
-- Thumbnails (smaller image variant) for index cards to reduce payload
-- Migrate from `drizzle-kit push` to migration files + GitHub Actions on push (for production-grade schema evolution)
-- Make R2 photo keys unguessable (random ULIDs instead of `<listing-id>/000.jpg`) for defense-in-depth
-- Browser bookmarklet fallback for sites we can't scrape from Vercel IPs
-- Export listing as PDF / shareable summary
-- Evaluate Clerk's APIKeys product (per-user / per-machine API keys with server-side verification) once we have multiple machine clients or want to gate `/api/**` more granularly. Defer until post-MVP.
-- Evaluate Google Places API for school discovery beyond what the listing sites show — broader coverage of charter / private / private-pre-K schools that may not appear in Zillow/Apartments.com/ApartmentList's curated lists. Requires GCP billing.
-- Evaluate GreatSchools API directly — we already get GreatSchools-derived ratings via the listing sites, but querying GreatSchools directly would give fresher data and let us show schools beyond the host site's curated list. US-only; partner approval required.
+User-defined labels for organizing the hunt — chips on cards and a filter on the home page.
 
 ---
 
-## Cross-cutting work landed alongside slices
+## Backlog 💡
 
-- **Theme**: semantic tokens (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-primary`, `text-destructive`) — dark mode auto-flips via CSS vars on `prefers-color-scheme`
-- **Layout**: shared `<AppHeader>` with brand link, "Add listing" link, Clerk `<UserButton>` (rendered only when signed in)
-- **Privacy**: `app/robots.ts` disallows all crawlers; root metadata sets `noindex/nofollow`; `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex` response header on every route
+Grouped by priority. Add new items under whichever group fits.
 
-## Key engineering notes
+### High — meaningful gaps for daily use
 
-- **Bot-detection volatility**: PerimeterX rules and IP-reputation lists drift faster than we can hand-tune. Architecture uses a ranked candidate list per host with first-success retry. As of 2026-04-25: `chrome145` for Zillow, `firefox147` for Apartments.com.
-- **No transactions**: `drizzle-orm/neon-http` is HTTP-based; transactions aren't supported. Failure modes that leave partial state (listing without all photos, R2 objects without DB rows) are acceptable for MVP and recoverable.
-- **Schema changes**: run `npm run db:push` from a developer's Mac with `DATABASE_URL` in `.env.local`. Drizzle-kit connects to Neon over the network — there is no local DB.
-- **Vercel function limits (Hobby)**: 60s `maxDuration`; the create action takes ~10–15s for a 26-photo listing.
-- **Sandbox / Mac platform mismatch**: this repo's `node_modules` is shared between the Linux sandbox and the user's Mac. Run `npm install` on the Mac after pulling changes that added or updated deps; otherwise platform-specific binaries (esbuild, swc) only have one of the two architectures and tools fail with "wrong platform" errors.
+- Show map inside listing detail, with marks for listing and points of interest
+- Advanced/Complex sorting; sort by multiple fields simultaneously, each adding on the sorting priority.
+- Priority number field for each listing; user will decide how important that listing is, and when that value change everything has to be reordered to avoid duplicate priorities.
+- Email notifications when a family member adds a listing or comments
+- Manual entry (no source URL) for sites we don't parse
+- Bulk-apply labels (select many → apply one)
+
+### Medium — useful enhancements without urgency
+
+- Map view clustering with hover-card preview
+- Background photo rehosting with streaming progress
+- Thumbnails (smaller image variant) for index cards
+- Browser bookmarklet for sites we can't scrape from Vercel
+
+### Low — operational hardening / nice-to-haves
+
+- Make R2 photo keys unguessable (random ULIDs)
+- Migrate from `drizzle-kit push` to migration files + GitHub Actions
+- PDF / shareable export
+
+### Evaluate later — third-party integrations
+
+- Clerk APIKeys (per-user / per-machine API keys)
+- Google Places API for broader school coverage
+- GreatSchools API directly (fresher rating data)
+
+---
+
+See [FEATURES.md](./FEATURES.md) for per-slice technical detail and engineering notes.
