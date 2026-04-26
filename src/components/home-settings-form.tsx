@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom";
 import {
   setHomeAction,
   type SetHomeState,
-} from "@/lib/user-settings-actions";
+} from "@/lib/home-settings-actions";
 
 const initial: SetHomeState = { kind: "idle" };
 

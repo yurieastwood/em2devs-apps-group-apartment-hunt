@@ -12,8 +12,8 @@ import {
 import type { Label, Listing } from "@/db/schema";
 import { urlFor } from "@/lib/storage/r2";
 import { VIEW_MODE_COOKIE, type ViewMode } from "@/lib/view-mode";
-import { getUserHome } from "@/lib/user-settings";
-import { getUserPois } from "@/lib/points-of-interest";
+import { getHome } from "@/lib/home-settings";
+import { getPois } from "@/lib/points-of-interest";
 import { listingScope } from "@/lib/listings/access";
 import {
   getLabelsForListings,
@@ -38,20 +38,19 @@ async function getViewMode(): Promise<ViewMode> {
 
 function buildMapData(
   home: {
-    homeLat: string | null;
-    homeLng: string | null;
-    homeAddress: string | null;
+    homeLat: string;
+    homeLng: string;
+    homeAddress: string;
   } | null,
   rows: Listing[],
 ): HomeMapProps {
-  const homePin =
-    home?.homeLat && home.homeLng && home.homeAddress
-      ? {
-          lat: parseFloat(home.homeLat),
-          lng: parseFloat(home.homeLng),
-          label: home.homeAddress,
-        }
-      : null;
+  const homePin = home
+    ? {
+        lat: parseFloat(home.homeLat),
+        lng: parseFloat(home.homeLng),
+        label: home.homeAddress,
+      }
+    : null;
 
   const pins = rows
     .filter((l) => l.latitude && l.longitude)
@@ -117,8 +116,8 @@ export default async function HomePage() {
     scope
       ? db.select().from(listings).where(scope).orderBy(desc(listings.createdAt))
       : Promise.resolve([]),
-    userId ? getUserHome(userId) : Promise.resolve(null),
-    userId ? getUserPois(userId) : Promise.resolve([]),
+    userId ? getHome({ userId, orgId }) : Promise.resolve(null),
+    userId ? getPois({ userId, orgId }) : Promise.resolve([]),
     userId ? listLabelsInScope({ userId, orgId }) : Promise.resolve([]),
   ]);
 

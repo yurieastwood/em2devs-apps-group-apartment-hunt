@@ -6,7 +6,7 @@ import { geocodeAddress } from "./geocode";
 import { deletePoiById, insertPoi, updatePoi } from "./points-of-interest";
 import {
   ensureDistances,
-  getAllListingIds,
+  getListingIdsInScope,
   invalidateDistancesForPoi,
 } from "./places/poi-distances";
 
@@ -24,7 +24,7 @@ export async function addPoiAction(
   _prev: PoiState,
   formData: FormData,
 ): Promise<PoiState> {
-  const { userId } = await auth();
+  const { userId, orgId } = await auth();
   if (!userId) return { kind: "error", message: "You're not signed in." };
 
   const label = readField(formData, "label");
@@ -40,17 +40,19 @@ export async function addPoiAction(
     };
   }
 
-  const inserted = await insertPoi({
-    ownerClerkUserId: userId,
-    label,
-    address: geo.displayName,
-    lat: geo.lat,
-    lng: geo.lng,
-  });
+  const inserted = await insertPoi(
+    { userId, orgId },
+    {
+      label,
+      address: geo.displayName,
+      lat: geo.lat,
+      lng: geo.lng,
+    },
+  );
 
-  const allListingIds = await getAllListingIds();
-  if (allListingIds.length > 0) {
-    await ensureDistances(allListingIds, [inserted.id]);
+  const scopeListings = await getListingIdsInScope({ userId, orgId });
+  if (scopeListings.length > 0) {
+    await ensureDistances(scopeListings, [inserted.id]);
   }
 
   revalidatePath("/");
@@ -62,7 +64,7 @@ export async function updatePoiAction(
   _prev: PoiState,
   formData: FormData,
 ): Promise<PoiState> {
-  const { userId } = await auth();
+  const { userId, orgId } = await auth();
   if (!userId) return { kind: "error", message: "You're not signed in." };
 
   const label = readField(formData, "label");
@@ -78,18 +80,22 @@ export async function updatePoiAction(
     };
   }
 
-  const updated = await updatePoi(poiId, userId, {
-    label,
-    address: geo.displayName,
-    lat: geo.lat,
-    lng: geo.lng,
-  });
+  const updated = await updatePoi(
+    { userId, orgId },
+    poiId,
+    {
+      label,
+      address: geo.displayName,
+      lat: geo.lat,
+      lng: geo.lng,
+    },
+  );
   if (!updated) return { kind: "error", message: "Couldn't update." };
 
   await invalidateDistancesForPoi(poiId);
-  const allListingIds = await getAllListingIds();
-  if (allListingIds.length > 0) {
-    await ensureDistances(allListingIds, [poiId]);
+  const scopeListings = await getListingIdsInScope({ userId, orgId });
+  if (scopeListings.length > 0) {
+    await ensureDistances(scopeListings, [poiId]);
   }
 
   revalidatePath("/");
@@ -97,8 +103,8 @@ export async function updatePoiAction(
 }
 
 export async function deletePoiAction(poiId: string): Promise<void> {
-  const { userId } = await auth();
+  const { userId, orgId } = await auth();
   if (!userId) return;
-  await deletePoiById(poiId, userId);
+  await deletePoiById({ userId, orgId }, poiId);
   revalidatePath("/");
 }

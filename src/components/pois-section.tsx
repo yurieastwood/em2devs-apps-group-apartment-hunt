@@ -1,13 +1,13 @@
 import { auth } from "@clerk/nextjs/server";
-import { getUserPois } from "@/lib/points-of-interest";
+import { getPois } from "@/lib/points-of-interest";
 import { PoiRow } from "./poi-row";
 import { AddPoiForm } from "./add-poi-form";
 
 export async function PoisSection() {
-  const { userId } = await auth();
+  const { userId, orgId } = await auth();
   if (!userId) return null;
 
-  const pois = await getUserPois(userId);
+  const pois = await getPois({ userId, orgId });
 
   return (
     <div className="mb-3">

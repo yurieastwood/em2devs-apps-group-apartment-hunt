@@ -3,7 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { geocodeAddress } from "./geocode";
-import { upsertUserHome } from "./user-settings";
+import { setHome } from "./home-settings";
 
 export type SetHomeState =
   | { kind: "idle" }
@@ -14,7 +14,7 @@ export async function setHomeAction(
   _prev: SetHomeState,
   formData: FormData,
 ): Promise<SetHomeState> {
-  const { userId } = await auth();
+  const { userId, orgId } = await auth();
   if (!userId) return { kind: "error", message: "You're not signed in." };
 
   const address = String(formData.get("address") ?? "").trim();
@@ -31,7 +31,12 @@ export async function setHomeAction(
     };
   }
 
-  await upsertUserHome(userId, result.displayName, result.lat, result.lng);
+  await setHome(
+    { userId, orgId },
+    result.displayName,
+    result.lat,
+    result.lng,
+  );
   revalidatePath("/");
   return { kind: "saved" };
 }

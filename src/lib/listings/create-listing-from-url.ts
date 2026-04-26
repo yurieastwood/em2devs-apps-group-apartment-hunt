@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { listingPhotos, listingSchools, listings } from "@/db/schema";
 import { fetchListing } from "../extract/fetch-listing";
-import { ensureDistances, getAllPoiIds } from "../places/poi-distances";
+import { ensureDistances, getPoiIdsInScope } from "../places/poi-distances";
 import { parseApartmentList } from "../extract/parsers/apartmentlist";
 import { parseApartments } from "../extract/parsers/apartments";
 import { parseZillow } from "../extract/parsers/zillow";
@@ -151,9 +151,16 @@ export async function createListingFromUrl(
     );
   }
 
-  const allPoiIds = await getAllPoiIds();
-  if (allPoiIds.length > 0 && parsed.latitude != null && parsed.longitude != null) {
-    await ensureDistances([inserted.id], allPoiIds);
+  const scopePoiIds = await getPoiIdsInScope({
+    userId: ownerClerkUserId,
+    orgId,
+  });
+  if (
+    scopePoiIds.length > 0 &&
+    parsed.latitude != null &&
+    parsed.longitude != null
+  ) {
+    await ensureDistances([inserted.id], scopePoiIds);
   }
 
   return { ok: true, id: inserted.id };

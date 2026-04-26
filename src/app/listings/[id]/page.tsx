@@ -11,6 +11,7 @@ import { CommentsSection } from "./comments-section";
 import { ReactionsBar } from "./reactions-bar";
 import { NearbySchools } from "./nearby-schools";
 import { ListingPoiDistances } from "@/components/listing-poi-distances";
+
 import { ListingLabelsSection } from "@/components/listing-labels";
 import { userCanAccessListing } from "@/lib/listings/access";
 

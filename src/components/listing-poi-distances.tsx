@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
 import { listingPoiDistances, pointsOfInterest } from "@/db/schema";
@@ -12,8 +12,15 @@ export async function ListingPoiDistances({
 }: {
   listingId: string;
 }) {
-  const { userId } = await auth();
+  const { userId, orgId } = await auth();
   if (!userId) return null;
+
+  const poiScope = orgId
+    ? eq(pointsOfInterest.orgId, orgId)
+    : and(
+        eq(pointsOfInterest.ownerClerkUserId, userId),
+        isNull(pointsOfInterest.orgId),
+      );
 
   const rows = await db
     .select({
@@ -31,7 +38,7 @@ export async function ListingPoiDistances({
         eq(listingPoiDistances.listingId, listingId),
       ),
     )
-    .where(eq(pointsOfInterest.ownerClerkUserId, userId))
+    .where(poiScope!)
     .orderBy(asc(pointsOfInterest.createdAt));
 
   if (rows.length === 0) return null;

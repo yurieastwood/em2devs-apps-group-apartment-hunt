@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   listingPoiDistances,
@@ -6,6 +6,11 @@ import {
   pointsOfInterest,
 } from "@/db/schema";
 import { fetchTransitDistances } from "./distance-matrix";
+
+export type Scope = {
+  userId: string;
+  orgId: string | null | undefined;
+};
 
 const BATCH_ORIGINS = 25; // Distance Matrix limit per request
 
@@ -104,14 +109,27 @@ export async function invalidateDistancesForPoi(poiId: string): Promise<void> {
     .where(eq(listingPoiDistances.poiId, poiId));
 }
 
-export async function getAllListingIds(): Promise<string[]> {
-  const rows = await db.select({ id: listings.id }).from(listings);
+export async function getListingIdsInScope(scope: Scope): Promise<string[]> {
+  const where = scope.orgId
+    ? eq(listings.orgId, scope.orgId)
+    : and(
+        eq(listings.ownerClerkUserId, scope.userId),
+        isNull(listings.orgId),
+      );
+  const rows = await db.select({ id: listings.id }).from(listings).where(where!);
   return rows.map((r) => r.id);
 }
 
-export async function getAllPoiIds(): Promise<string[]> {
-  const rows = await db.select({ id: pointsOfInterest.id }).from(
-    pointsOfInterest,
-  );
+export async function getPoiIdsInScope(scope: Scope): Promise<string[]> {
+  const where = scope.orgId
+    ? eq(pointsOfInterest.orgId, scope.orgId)
+    : and(
+        eq(pointsOfInterest.ownerClerkUserId, scope.userId),
+        isNull(pointsOfInterest.orgId),
+      );
+  const rows = await db
+    .select({ id: pointsOfInterest.id })
+    .from(pointsOfInterest)
+    .where(where!);
   return rows.map((r) => r.id);
 }

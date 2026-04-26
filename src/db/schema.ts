@@ -191,6 +191,7 @@ export const pointsOfInterest = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+    orgId: text("org_id"),
     label: text("label").notNull(),
     address: text("address").notNull(),
     lat: numeric("lat", { precision: 9, scale: 6 }).notNull(),
@@ -203,7 +204,7 @@ export const pointsOfInterest = pgTable(
       .defaultNow(),
   },
   (t) => ({
-    ownerIdx: index("pois_owner_idx").on(t.ownerClerkUserId),
+    scopeIdx: index("pois_scope_idx").on(t.ownerClerkUserId, t.orgId),
   }),
 );
 
@@ -229,18 +230,29 @@ export const listingPoiDistances = pgTable(
   }),
 );
 
-export const userSettings = pgTable("user_settings", {
-  clerkUserId: text("clerk_user_id").primaryKey(),
-  homeAddress: text("home_address"),
-  homeLat: numeric("home_lat", { precision: 9, scale: 6 }),
-  homeLng: numeric("home_lng", { precision: 9, scale: 6 }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const homeSettings = pgTable(
+  "home_settings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+    orgId: text("org_id"),
+    homeAddress: text("home_address").notNull(),
+    homeLat: numeric("home_lat", { precision: 9, scale: 6 }).notNull(),
+    homeLng: numeric("home_lng", { precision: 9, scale: 6 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    scopeIdx: index("home_settings_scope_idx").on(
+      t.ownerClerkUserId,
+      t.orgId,
+    ),
+  }),
+);
 
 export type Listing = typeof listings.$inferSelect;
 export type NewListing = typeof listings.$inferInsert;
@@ -250,8 +262,8 @@ export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;
 export type Reaction = typeof reactions.$inferSelect;
 export type NewReaction = typeof reactions.$inferInsert;
-export type UserSettings = typeof userSettings.$inferSelect;
-export type NewUserSettings = typeof userSettings.$inferInsert;
+export type HomeSettings = typeof homeSettings.$inferSelect;
+export type NewHomeSettings = typeof homeSettings.$inferInsert;
 export type ListingSchool = typeof listingSchools.$inferSelect;
 export type NewListingSchool = typeof listingSchools.$inferInsert;
 export type PointOfInterest = typeof pointsOfInterest.$inferSelect;
