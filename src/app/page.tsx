@@ -14,6 +14,7 @@ import { urlFor } from "@/lib/storage/r2";
 import { VIEW_MODE_COOKIE, type ViewMode } from "@/lib/view-mode";
 import { getUserHome } from "@/lib/user-settings";
 import { getUserPois } from "@/lib/points-of-interest";
+import { listingScope } from "@/lib/listings/access";
 import { ViewModeToggle } from "@/components/view-mode-toggle";
 import { HomeMap, type HomeMapProps } from "@/components/home-map";
 import { HomeSettingsForm } from "@/components/home-settings-form";
@@ -103,11 +104,15 @@ function buildNearestPkRatingMap(
 }
 
 export default async function HomePage() {
-  const { userId } = await auth();
+  const { userId, orgId } = await auth();
   const viewMode = await getViewMode();
 
+  const scope = listingScope({ userId, orgId });
+
   const [allListings, userHome, userPois] = await Promise.all([
-    db.select().from(listings).orderBy(desc(listings.createdAt)),
+    scope
+      ? db.select().from(listings).where(scope).orderBy(desc(listings.createdAt))
+      : Promise.resolve([]),
     userId ? getUserHome(userId) : Promise.resolve(null),
     userId ? getUserPois(userId) : Promise.resolve([]),
   ]);

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { listings } from "@/db/schema";
+import { listingScope } from "@/lib/listings/access";
 
 export type EditState = { kind: "idle" } | { kind: "error"; message: string };
 
@@ -36,8 +37,13 @@ export async function updateListingAction(
   _prev: EditState,
   formData: FormData,
 ): Promise<EditState> {
-  const { userId } = await auth();
+  const { userId, orgId } = await auth();
   if (!userId) return { kind: "error", message: "You're not signed in." };
+
+  const scope = listingScope({ userId, orgId });
+  if (!scope) {
+    return { kind: "error", message: "Couldn't update — no access." };
+  }
 
   const updates = {
     title: readString(formData, "title"),
@@ -56,16 +62,11 @@ export async function updateListingAction(
   const result = await db
     .update(listings)
     .set(updates)
-    .where(
-      and(
-        eq(listings.id, listingId),
-        eq(listings.ownerClerkUserId, userId),
-      ),
-    )
+    .where(and(eq(listings.id, listingId), scope))
     .returning({ id: listings.id });
 
   if (result.length === 0) {
-    return { kind: "error", message: "Couldn't update — not your listing." };
+    return { kind: "error", message: "Couldn't update — not in your scope." };
   }
 
   redirect(`/listings/${listingId}`);

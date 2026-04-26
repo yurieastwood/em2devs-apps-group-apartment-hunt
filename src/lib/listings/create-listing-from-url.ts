@@ -35,6 +35,7 @@ function normalizeHost(host: string): string {
 export async function createListingFromUrl(
   rawUrl: string,
   ownerClerkUserId: string,
+  orgId: string | null,
 ): Promise<CreateListingResult> {
   let parsedUrl: URL;
   try {
@@ -84,6 +85,7 @@ export async function createListingFromUrl(
     .insert(listings)
     .values({
       ownerClerkUserId,
+      orgId,
       sourceUrl: parsed.sourceUrl,
       sourceHost: parsed.sourceHost,
       sourceListingId: parsed.sourceListingId,

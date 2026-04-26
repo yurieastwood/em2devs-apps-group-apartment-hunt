@@ -11,14 +11,36 @@ import {
   reactions,
 } from "@/db/schema";
 import { deleteObjects } from "@/lib/storage/r2";
+import { listingScope, userCanAccessListing } from "@/lib/listings/access";
+
+async function getAccessibleListing(
+  listingId: string,
+  authCtx: { userId: string | null; orgId: string | null | undefined },
+) {
+  const [row] = await db
+    .select({
+      id: listings.id,
+      orgId: listings.orgId,
+      ownerClerkUserId: listings.ownerClerkUserId,
+    })
+    .from(listings)
+    .where(eq(listings.id, listingId))
+    .limit(1);
+  if (!row) return null;
+  if (!userCanAccessListing(row, authCtx)) return null;
+  return row;
+}
 
 // Returns void after revalidating /. Caller decides whether to navigate
 // (the detail page will router.push("/") because the page no longer points
 // at a real listing; the home-page caller stays put — the listing just
 // disappears from the now-revalidated list).
 export async function deleteListingAction(listingId: string): Promise<void> {
-  const { userId } = await auth();
+  const { userId, orgId } = await auth();
   if (!userId) return;
+
+  const scope = listingScope({ userId, orgId });
+  if (!scope) return;
 
   const photos = await db
     .select({ r2Key: listingPhotos.r2Key })
@@ -27,12 +49,7 @@ export async function deleteListingAction(listingId: string): Promise<void> {
 
   const result = await db
     .delete(listings)
-    .where(
-      and(
-        eq(listings.id, listingId),
-        eq(listings.ownerClerkUserId, userId),
-      ),
-    )
+    .where(and(eq(listings.id, listingId), scope))
     .returning({ id: listings.id });
 
   if (result.length === 0) {
@@ -60,8 +77,13 @@ export async function addCommentAction(
   _prev: CommentState,
   formData: FormData,
 ): Promise<CommentState> {
-  const { userId } = await auth();
+  const { userId, orgId } = await auth();
   if (!userId) return { kind: "error", message: "You're not signed in." };
+
+  const accessible = await getAccessibleListing(listingId, { userId, orgId });
+  if (!accessible) {
+    return { kind: "error", message: "You don't have access to this listing." };
+  }
 
   const body = String(formData.get("body") ?? "").trim();
   if (!body) return { kind: "error", message: "Type something first." };
@@ -102,8 +124,11 @@ export async function toggleReactionAction(
   listingId: string,
   emoji: string,
 ): Promise<void> {
-  const { userId } = await auth();
+  const { userId, orgId } = await auth();
   if (!userId) return;
+
+  const accessible = await getAccessibleListing(listingId, { userId, orgId });
+  if (!accessible) return;
 
   const existing = await db
     .select({ id: reactions.id })

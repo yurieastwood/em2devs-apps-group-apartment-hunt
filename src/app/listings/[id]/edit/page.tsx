@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/db/client";
 import { listings } from "@/db/schema";
+import { userCanAccessListing } from "@/lib/listings/access";
 import { EditListingForm } from "./edit-form";
 
 export const runtime = "nodejs";
@@ -12,7 +13,7 @@ type Params = Promise<{ id: string }>;
 
 export default async function EditListingPage({ params }: { params: Params }) {
   const { id } = await params;
-  const { userId } = await auth();
+  const { userId, orgId } = await auth();
   if (!userId) redirect("/sign-in");
 
   const [listing] = await db
@@ -22,7 +23,7 @@ export default async function EditListingPage({ params }: { params: Params }) {
     .limit(1);
 
   if (!listing) notFound();
-  if (listing.ownerClerkUserId !== userId) notFound();
+  if (!userCanAccessListing(listing, { userId, orgId })) notFound();
 
   return (
     <main className="flex-1 max-w-2xl mx-auto p-8 w-full">

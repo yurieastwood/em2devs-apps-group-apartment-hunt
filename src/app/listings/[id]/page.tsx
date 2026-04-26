@@ -11,6 +11,7 @@ import { CommentsSection } from "./comments-section";
 import { ReactionsBar } from "./reactions-bar";
 import { NearbySchools } from "./nearby-schools";
 import { ListingPoiDistances } from "@/components/listing-poi-distances";
+import { userCanAccessListing } from "@/lib/listings/access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,7 +50,7 @@ function PhotoErrorsSection({ raw }: { raw: unknown }) {
 
 export default async function ListingDetailPage({ params }: { params: Params }) {
   const { id } = await params;
-  const { userId } = await auth();
+  const { userId, orgId } = await auth();
 
   const [listing] = await db
     .select()
@@ -58,6 +59,7 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
     .limit(1);
 
   if (!listing) notFound();
+  if (!userCanAccessListing(listing, { userId, orgId })) notFound();
 
   const isOwner = userId === listing.ownerClerkUserId;
 

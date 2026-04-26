@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
+import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
 
 export function AppHeader() {
   return (
@@ -15,6 +15,12 @@ export function AppHeader() {
           >
             Add listing
           </Link>
+          <OrganizationSwitcher
+            hidePersonal={false}
+            afterCreateOrganizationUrl="/"
+            afterSelectOrganizationUrl="/"
+            afterSelectPersonalUrl="/"
+          />
           <UserButton />
         </nav>
       </div>

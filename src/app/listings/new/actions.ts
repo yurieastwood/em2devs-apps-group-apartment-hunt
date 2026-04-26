@@ -28,13 +28,13 @@ export async function createListingAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const { userId } = await auth();
+  const { userId, orgId } = await auth();
   if (!userId) return { kind: "error", message: "You're not signed in." };
 
   const url = String(formData.get("url") ?? "").trim();
   if (!url) return { kind: "error", message: "Paste a listing URL first." };
 
-  const result = await createListingFromUrl(url, userId);
+  const result = await createListingFromUrl(url, userId, orgId ?? null);
 
   if (result.ok) {
     redirect(`/listings/${result.id}`);
@@ -67,10 +67,10 @@ function reasonFor(err: CreateListingError): string {
 export async function importListingAction(
   url: string,
 ): Promise<ImportResult> {
-  const { userId } = await auth();
+  const { userId, orgId } = await auth();
   if (!userId) return { ok: false, reason: "Not signed in" };
 
-  const result = await createListingFromUrl(url, userId);
+  const result = await createListingFromUrl(url, userId, orgId ?? null);
   if (result.ok) return { ok: true, id: result.id };
   return { ok: false, reason: reasonFor(result.error) };
 }

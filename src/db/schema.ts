@@ -16,6 +16,7 @@ export const listings = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+    orgId: text("org_id"),
     sourceUrl: text("source_url").notNull(),
     sourceHost: text("source_host").notNull(),
     sourceListingId: text("source_listing_id"),
@@ -42,6 +43,7 @@ export const listings = pgTable(
   (t) => ({
     sourceUrlIdx: uniqueIndex("listings_source_url_idx").on(t.sourceUrl),
     ownerIdx: index("listings_owner_idx").on(t.ownerClerkUserId),
+    orgIdx: index("listings_org_idx").on(t.orgId),
   }),
 );
 

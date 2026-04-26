@@ -90,15 +90,15 @@ Per-user POIs (Work, school, family) with transit-based distance to every listin
 - ✅ Google Distance Matrix integration (server-side, mode=transit, `departure_time=now`). Separate `GOOGLE_MAPS_SERVER_KEY` env var (the public Maps JS key won't work server-to-server because of HTTP-referrer restrictions). Eager compute on POI add (POI × all listings) and on listing add (new listing × all POIs); results cached in `listing_poi_distances` so subsequent renders don't pay the API cost.
 - ✅ Display: home cards/rows show "🚌 Work: 25 min" per POI under the BR/BA/price line; listing detail page renders a "Transit times" section listing each POI with duration + miles. Pure formatters in `src/lib/transit-format.ts` so server and client components can share them.
 
-## Slice 3 — Access control 📋
+## Slice 3 — Access control 🔄
 
 Invite-only, family-scoped access.
 
-- 📋 Clerk Organizations integration (one org per household/family; one user can be in multiple)
-- 📋 Add `org_id` column to `listings`; backfill existing rows; scope all reads/writes to the current org
-- 📋 Invite flow (create org from settings, invite family by email, accept-invite UI)
+- ✅ R2 public bucket binding + `R2_PUBLIC_URL_BASE` env — replace per-photo presigned URLs with direct URLs (faster page loads, no S3 SDK calls per render). Includes a fix to `urlFor()` to encode key segments individually so path slashes survive.
+- ✅ Clerk Organizations integration — `<OrganizationSwitcher />` in the app header; `org_id` column on `listings` (nullable for personal-mode legacy rows); reads/writes scoped via `listingScope` helper (in an org → filter by org_id; personal → owner-and-org_id-IS-NULL); detail page, edit page, and all mutating actions (delete, edit, comment, reaction) gate access via `userCanAccessListing`. Comments and reactions inherit visibility from their parent listing's scope.
+- 📋 Backfill UI for moving pre-orgs personal listings into an active org (today the user runs `UPDATE listings SET org_id = '<id>' WHERE owner_clerk_user_id = '<id>' AND org_id IS NULL` in Neon SQL)
+- 📋 Invite flow (Clerk dashboard already supports invitation emails; we use the OrganizationSwitcher's built-in member management UI)
 - 📋 Disable public sign-up in Clerk so only invited members can join
-- 📋 R2 public bucket binding + `R2_PUBLIC_URL_BASE` env — replace per-photo presigned URLs with direct URLs (faster page loads, no S3 SDK calls per render)
 
 ## Backlog / future polish 💡
 
