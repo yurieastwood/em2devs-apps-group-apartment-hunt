@@ -142,6 +142,49 @@ export const listingSchools = pgTable(
   }),
 );
 
+export const pointsOfInterest = pgTable(
+  "points_of_interest",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+    label: text("label").notNull(),
+    address: text("address").notNull(),
+    lat: numeric("lat", { precision: 9, scale: 6 }).notNull(),
+    lng: numeric("lng", { precision: 9, scale: 6 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    ownerIdx: index("pois_owner_idx").on(t.ownerClerkUserId),
+  }),
+);
+
+export const listingPoiDistances = pgTable(
+  "listing_poi_distances",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    listingId: uuid("listing_id")
+      .notNull()
+      .references(() => listings.id, { onDelete: "cascade" }),
+    poiId: uuid("poi_id")
+      .notNull()
+      .references(() => pointsOfInterest.id, { onDelete: "cascade" }),
+    durationSeconds: integer("duration_seconds"),
+    distanceMeters: integer("distance_meters"),
+    computedAt: timestamp("computed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    pairUnique: uniqueIndex("listing_poi_pair_idx").on(t.listingId, t.poiId),
+    poiIdx: index("listing_poi_poi_idx").on(t.poiId),
+  }),
+);
+
 export const userSettings = pgTable("user_settings", {
   clerkUserId: text("clerk_user_id").primaryKey(),
   homeAddress: text("home_address"),
@@ -167,3 +210,7 @@ export type UserSettings = typeof userSettings.$inferSelect;
 export type NewUserSettings = typeof userSettings.$inferInsert;
 export type ListingSchool = typeof listingSchools.$inferSelect;
 export type NewListingSchool = typeof listingSchools.$inferInsert;
+export type PointOfInterest = typeof pointsOfInterest.$inferSelect;
+export type NewPointOfInterest = typeof pointsOfInterest.$inferInsert;
+export type ListingPoiDistance = typeof listingPoiDistances.$inferSelect;
+export type NewListingPoiDistance = typeof listingPoiDistances.$inferInsert;
