@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { listingPhotos, listings } from "@/db/schema";
+import { listingPhotos, listingSchools, listings } from "@/db/schema";
 import { fetchListing } from "../extract/fetch-listing";
 import { parseApartmentList } from "../extract/parsers/apartmentlist";
 import { parseApartments } from "../extract/parsers/apartments";
@@ -126,6 +126,26 @@ export async function createListingFromUrl(
         raw: { ...(parsed.raw as object), photoErrors: photoErrors.slice(0, 10) },
       })
       .where(eq(listings.id, inserted.id));
+  }
+
+  if (parsed.schools.length > 0) {
+    await db.insert(listingSchools).values(
+      parsed.schools.map((s, i) => ({
+        listingId: inserted.id,
+        sortOrder: i,
+        name: s.name,
+        schoolType: s.schoolType ?? null,
+        level: s.level ?? null,
+        gradeRange: s.gradeRange ?? null,
+        rating: s.rating ?? null,
+        distanceMiles: s.distanceMiles?.toString() ?? null,
+        greatSchoolsUrl: s.greatSchoolsUrl ?? null,
+        enrollment: s.enrollment ?? null,
+        isAssigned: s.isAssigned ?? null,
+        lat: s.lat?.toString() ?? null,
+        lng: s.lng?.toString() ?? null,
+      })),
+    );
   }
 
   return { ok: true, id: inserted.id };

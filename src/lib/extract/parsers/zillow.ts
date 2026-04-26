@@ -1,4 +1,4 @@
-import type { ListingPhoto, ParsedListing } from "../types";
+import type { ListingPhoto, ParsedListing, ParsedSchool } from "../types";
 import {
   asNum,
   asString,
@@ -43,6 +43,30 @@ function pickLargestJpeg(mix: Json): ListingPhoto | null {
     if (!best || width > (best.width ?? 0)) best = { url, width };
   }
   return best;
+}
+
+function extractSchools(property: Json): ParsedSchool[] {
+  const list = get(property, "schools");
+  if (!Array.isArray(list)) return [];
+  const out: ParsedSchool[] = [];
+  for (const s of list) {
+    const name = asString(get(s, "name"));
+    if (!name) continue;
+    out.push({
+      name,
+      schoolType: asString(get(s, "type")),
+      level: asString(get(s, "level")),
+      gradeRange: asString(get(s, "grades")),
+      rating: asNum(get(s, "rating")),
+      distanceMiles: asNum(get(s, "distance")),
+      greatSchoolsUrl: asString(get(s, "link")),
+      enrollment: asNum(get(s, "size")),
+      isAssigned: typeof get(s, "isAssigned") === "boolean"
+        ? (get(s, "isAssigned") as boolean)
+        : null,
+    });
+  }
+  return out;
 }
 
 function extractPhotos(property: Json): ListingPhoto[] {
@@ -94,6 +118,7 @@ export function parseZillow(sourceUrl: string, html: string): ParsedListing {
     priceUsd: asNum(get(ld, "offers", "price")) ?? asNum(get(property, "price")),
     description: asString(get(property, "description")),
     photos: extractPhotos(property),
+    schools: extractSchools(property),
     raw: { jsonLd: ld, property },
   };
 }

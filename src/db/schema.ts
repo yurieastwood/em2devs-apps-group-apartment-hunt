@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -110,6 +111,37 @@ export const reactions = pgTable(
   }),
 );
 
+export const listingSchools = pgTable(
+  "listing_schools",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    listingId: uuid("listing_id")
+      .notNull()
+      .references(() => listings.id, { onDelete: "cascade" }),
+    sortOrder: integer("sort_order").notNull(),
+    name: text("name").notNull(),
+    schoolType: text("school_type"),
+    level: text("level"),
+    gradeRange: text("grade_range"),
+    rating: integer("rating"),
+    distanceMiles: numeric("distance_miles", { precision: 6, scale: 3 }),
+    greatSchoolsUrl: text("great_schools_url"),
+    enrollment: integer("enrollment"),
+    isAssigned: boolean("is_assigned"),
+    lat: numeric("lat", { precision: 9, scale: 6 }),
+    lng: numeric("lng", { precision: 9, scale: 6 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    listingIdx: index("listing_schools_listing_idx").on(
+      t.listingId,
+      t.sortOrder,
+    ),
+  }),
+);
+
 export const userSettings = pgTable("user_settings", {
   clerkUserId: text("clerk_user_id").primaryKey(),
   homeAddress: text("home_address"),
@@ -133,3 +165,5 @@ export type Reaction = typeof reactions.$inferSelect;
 export type NewReaction = typeof reactions.$inferInsert;
 export type UserSettings = typeof userSettings.$inferSelect;
 export type NewUserSettings = typeof userSettings.$inferInsert;
+export type ListingSchool = typeof listingSchools.$inferSelect;
+export type NewListingSchool = typeof listingSchools.$inferInsert;

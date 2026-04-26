@@ -1,4 +1,4 @@
-import type { ListingPhoto, ParsedListing } from "../types";
+import type { ListingPhoto, ParsedListing, ParsedSchool } from "../types";
 import {
   asNum,
   asString,
@@ -50,6 +50,35 @@ function buildPhotoUrl(id: string): string {
   return `https://cdn.apartmentlist.com/image/upload/f_auto,q_auto/${id}.jpg`;
 }
 
+// ApartmentList ships a flat array of up to ~50 schools attached to the page,
+// not the listing object — at component.schools. Each entry is rich.
+function extractSchools(component: Json): ParsedSchool[] {
+  const list = get(component, "schools");
+  if (!Array.isArray(list)) return [];
+  const ranked = [...list].sort((a, b) => {
+    const da = asNum(get(a, "distance_to_school")) ?? Infinity;
+    const db = asNum(get(b, "distance_to_school")) ?? Infinity;
+    return da - db;
+  });
+  const out: ParsedSchool[] = [];
+  for (const s of ranked.slice(0, 12)) {
+    const name = asString(get(s, "name"));
+    if (!name) continue;
+    out.push({
+      name,
+      schoolType: asString(get(s, "school_type")),
+      gradeRange: asString(get(s, "level")),
+      rating: asNum(get(s, "great_schools_rating")),
+      distanceMiles: asNum(get(s, "distance_to_school")),
+      greatSchoolsUrl: asString(get(s, "great_schools_url")),
+      enrollment: asNum(get(s, "enrollment")),
+      lat: asNum(get(s, "lat")),
+      lng: asNum(get(s, "lon")),
+    });
+  }
+  return out;
+}
+
 function extractPhotos(listing: Json): ListingPhoto[] {
   const all = get(listing, "all_photos");
   if (!Array.isArray(all)) return [];
@@ -74,13 +103,8 @@ export function parseApartmentList(
   const aptLd = findApartmentLd(html);
 
   const nextData = extractNextData(html);
-  const listing = get(
-    nextData,
-    "props",
-    "pageProps",
-    "component",
-    "listing",
-  );
+  const component = get(nextData, "props", "pageProps", "component");
+  const listing = get(component, "listing");
 
   const units = get(listing, "available_units");
   const firstUnit = Array.isArray(units) ? units[0] : null;
@@ -119,6 +143,7 @@ export function parseApartmentList(
       asString(get(listing, "description")) ??
       asString(get(ld, "description")),
     photos: extractPhotos(listing),
+    schools: extractSchools(component),
     raw: { jsonLd: ld, apartmentLd: aptLd, listing },
   };
 }

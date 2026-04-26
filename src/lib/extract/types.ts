@@ -4,6 +4,20 @@ export type ListingPhoto = {
   height?: number;
 };
 
+export type ParsedSchool = {
+  name: string;
+  schoolType?: string | null;
+  level?: string | null;
+  gradeRange?: string | null;
+  rating?: number | null;
+  distanceMiles?: number | null;
+  greatSchoolsUrl?: string | null;
+  enrollment?: number | null;
+  isAssigned?: boolean | null;
+  lat?: number | null;
+  lng?: number | null;
+};
+
 export type ParsedListing = {
   sourceUrl: string;
   sourceHost: string;
@@ -22,5 +36,6 @@ export type ParsedListing = {
   priceUsd: number | null;
   description: string | null;
   photos: ListingPhoto[];
+  schools: ParsedSchool[];
   raw: unknown;
 };

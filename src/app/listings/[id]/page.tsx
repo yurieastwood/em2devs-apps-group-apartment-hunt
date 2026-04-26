@@ -142,10 +142,7 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
         <ReactionsBar listingId={listing.id} />
       </div>
 
-      <NearbySchools
-        lat={listing.latitude ? parseFloat(listing.latitude) : null}
-        lng={listing.longitude ? parseFloat(listing.longitude) : null}
-      />
+      <NearbySchools listingId={listing.id} />
 
       <CommentsSection listingId={listing.id} />
     </main>

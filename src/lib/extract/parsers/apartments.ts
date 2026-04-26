@@ -1,4 +1,4 @@
-import type { ListingPhoto, ParsedListing } from "../types";
+import type { ListingPhoto, ParsedListing, ParsedSchool } from "../types";
 import {
   asNum,
   asString,
@@ -25,6 +25,59 @@ function extractRentals(html: string): Json[] {
   if (!m) return [];
   const arr = safeJsonParse(m[1]);
   return Array.isArray(arr) ? arr : [];
+}
+
+// Apartments.com renders schools as HTML cards (no JSON), each with:
+// - a <a title="..."> with the school name
+// - a "subtitle" div like "Public Elementary & Middle School"
+// - a "Grades PK-8" line
+// - an enrollment line like "327 Students"
+// - a rating image whose filename encodes the rating (summary-rating-N-large.png)
+// - a greatschools.org link
+// - "Attendance Zone" indicator instead of explicit distance
+function extractApartmentsSchools(html: string): ParsedSchool[] {
+  // Each school card includes a link to apartments.com/schools and another to
+  // greatschools.org. Anchor on the title link, then capture the surrounding
+  // card content up to the next greatschools.org link.
+  const re =
+    /<a[^>]+href="https:\/\/www\.apartments\.com\/schools\/[^"]+"[^>]*title="([^"]+)"[^>]*>[\s\S]*?<div class="subtitle">([^<]+)<\/div>([\s\S]*?)https:\/\/www\.greatschools\.org\/([^"]+)"[\s\S]*?summary-rating-(\d+)-large/g;
+
+  const out: ParsedSchool[] = [];
+  for (const m of html.matchAll(re)) {
+    const name = m[1].trim();
+    const subtitle = m[2].trim();
+    const cardBody = m[3];
+    const greatSchoolsPath = m[4];
+    const ratingStr = m[5];
+
+    const grades = cardBody.match(/Grades\s+([A-Z0-9-]+)/);
+    const enrollMatch = cardBody.match(/(\d+)\s+Students/);
+    const isAssigned = /Attendance Zone/.test(cardBody);
+
+    const lower = subtitle.toLowerCase();
+    let schoolType: string | null = null;
+    if (lower.includes("public")) schoolType = "Public";
+    else if (lower.includes("private")) schoolType = "Private";
+    else if (lower.includes("charter")) schoolType = "Charter";
+    else if (lower.includes("magnet")) schoolType = "Magnet";
+
+    let level: string | null = null;
+    if (lower.includes("elementary")) level = "Elementary";
+    else if (lower.includes("middle")) level = "Middle";
+    else if (lower.includes("high")) level = "High";
+
+    out.push({
+      name,
+      schoolType,
+      level,
+      gradeRange: grades ? grades[1] : null,
+      rating: Number(ratingStr),
+      enrollment: enrollMatch ? Number(enrollMatch[1]) : null,
+      isAssigned,
+      greatSchoolsUrl: `https://www.greatschools.org/${greatSchoolsPath}`,
+    });
+  }
+  return out;
 }
 
 function extractPhotos(graphItem: Json): ListingPhoto[] {
@@ -90,6 +143,7 @@ export function parseApartments(
       asString(get(graph0, "description")) ??
       asString(get(firstRental, "Description")),
     photos: extractPhotos(graph0),
+    schools: extractApartmentsSchools(html),
     raw: { jsonLd: ld, rental: firstRental },
   };
 }

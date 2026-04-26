@@ -29,13 +29,6 @@ const homeIcon = L.divIcon({
   iconAnchor: [16, 28],
 });
 
-const schoolIcon = L.divIcon({
-  html: `<div style="background:#16a34a;border:2px solid white;border-radius:50%;width:14px;height:14px;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></div>`,
-  className: "",
-  iconSize: [14, 14],
-  iconAnchor: [7, 7],
-});
-
 export type HomeMapPin = {
   id: string;
   lat: number;
@@ -44,21 +37,12 @@ export type HomeMapPin = {
   href?: string;
 };
 
-export type HomeMapSchool = {
-  id: string;
-  lat: number;
-  lng: number;
-  name: string;
-  address: string | null;
-};
-
 export type HomeMapLeafletProps = {
   home: { lat: number; lng: number; label: string } | null;
   pins: HomeMapPin[];
-  schools?: HomeMapSchool[];
 };
 
-export function HomeMapLeaflet({ home, pins, schools = [] }: HomeMapLeafletProps) {
+export function HomeMapLeaflet({ home, pins }: HomeMapLeafletProps) {
   const positions: [number, number][] = [];
   if (home) positions.push([home.lat, home.lng]);
   for (const p of pins) positions.push([p.lat, p.lng]);
@@ -114,19 +98,6 @@ export function HomeMapLeaflet({ home, pins, schools = [] }: HomeMapLeafletProps
               ) : (
                 <span className="font-medium">{pin.label}</span>
               )}
-            </Popup>
-          </Marker>
-        ))}
-        {schools.map((s) => (
-          <Marker key={s.id} position={[s.lat, s.lng]} icon={schoolIcon}>
-            <Popup>
-              <strong>{s.name}</strong>
-              {s.address ? (
-                <>
-                  <br />
-                  {s.address}
-                </>
-              ) : null}
             </Popup>
           </Marker>
         ))}
