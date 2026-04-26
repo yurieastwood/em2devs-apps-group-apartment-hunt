@@ -1,7 +1,6 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -13,6 +12,10 @@ import {
 } from "@/db/schema";
 import { deleteObjects } from "@/lib/storage/r2";
 
+// Returns void after revalidating /. Caller decides whether to navigate
+// (the detail page will router.push("/") because the page no longer points
+// at a real listing; the home-page caller stays put — the listing just
+// disappears from the now-revalidated list).
 export async function deleteListingAction(listingId: string): Promise<void> {
   const { userId } = await auth();
   if (!userId) return;
@@ -44,7 +47,7 @@ export async function deleteListingAction(listingId: string): Promise<void> {
     }
   }
 
-  redirect("/");
+  revalidatePath("/");
 }
 
 export type CommentState =

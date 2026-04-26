@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
+import { DeleteListingButton } from "./delete-listing-button";
 
 export type ListingListRowProps = {
   listingId: string;
@@ -11,7 +12,9 @@ export type ListingListRowProps = {
   bedrooms: string | null;
   bathrooms: string | null;
   priceUsd: number | null;
+  bestPkRating?: number | null;
   coverUrl: string | null;
+  isOwner?: boolean;
 };
 
 export function ListingListRow({
@@ -20,7 +23,9 @@ export function ListingListRow({
   bedrooms,
   bathrooms,
   priceUsd,
+  bestPkRating,
   coverUrl,
+  isOwner,
 }: ListingListRowProps) {
   const [open, setOpen] = useState(false);
 
@@ -42,19 +47,32 @@ export function ListingListRow({
                 ${priceUsd.toLocaleString("en-US")}/mo
               </span>
             ) : null}
+            {bestPkRating != null ? (
+              <span title="Best nearby PK school rating">
+                🏫 {bestPkRating}/10
+              </span>
+            ) : null}
           </p>
         </div>
-        {coverUrl ? (
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="text-sm text-primary hover:underline shrink-0"
-          >
-            Show photo
-          </button>
-        ) : null}
+        <div className="flex items-center gap-3 shrink-0">
+          {coverUrl ? (
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="text-sm text-primary hover:underline"
+            >
+              Show photo
+            </button>
+          ) : null}
+          {isOwner ? (
+            <DeleteListingButton
+              listingId={listingId}
+              label="Delete"
+              className="text-xs text-muted-foreground hover:text-destructive disabled:opacity-60"
+            />
+          ) : null}
+        </div>
       </div>
-
       {coverUrl ? (
         <Lightbox
           open={open}

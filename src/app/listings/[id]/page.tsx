@@ -6,7 +6,7 @@ import { db } from "@/db/client";
 import { listingPhotos, listings } from "@/db/schema";
 import { urlFor } from "@/lib/storage/r2";
 import { PhotoCarousel } from "@/components/photo-carousel";
-import { DeleteButton } from "./delete-button";
+import { DeleteListingButton } from "@/components/delete-listing-button";
 import { CommentsSection } from "./comments-section";
 import { ReactionsBar } from "./reactions-bar";
 import { NearbySchools } from "./nearby-schools";
@@ -133,7 +133,10 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
             >
               Edit
             </Link>
-            <DeleteButton listingId={listing.id} />
+            <DeleteListingButton
+              listingId={listing.id}
+              navigateTo="/"
+            />
           </>
         ) : null}
       </div>

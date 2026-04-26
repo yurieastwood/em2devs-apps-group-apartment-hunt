@@ -1,29 +1,23 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
-import { listingPhotos, listings } from "@/db/schema";
+import { listingPhotos, listingSchools, listings } from "@/db/schema";
 import type { Listing } from "@/db/schema";
 import { urlFor } from "@/lib/storage/r2";
 import { VIEW_MODE_COOKIE, type ViewMode } from "@/lib/view-mode";
 import { getUserHome } from "@/lib/user-settings";
 import { ViewModeToggle } from "@/components/view-mode-toggle";
-import { ListingListRow } from "@/components/listing-list-row";
 import { HomeMap, type HomeMapProps } from "@/components/home-map";
 import { HomeSettingsForm } from "@/components/home-settings-form";
+import {
+  ListingsBrowser,
+  type HomeListingItem,
+} from "@/components/listings-browser";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-type Card = {
-  listing: Listing;
-  coverUrl: string | null;
-};
-
-function fmtPrice(n: number | null): string | null {
-  return n == null ? null : `$${n.toLocaleString("en-US")}/mo`;
-}
 
 async function getViewMode(): Promise<ViewMode> {
   const c = await cookies();
@@ -31,7 +25,11 @@ async function getViewMode(): Promise<ViewMode> {
 }
 
 function buildMapData(
-  home: { homeLat: string | null; homeLng: string | null; homeAddress: string | null } | null,
+  home: {
+    homeLat: string | null;
+    homeLng: string | null;
+    homeAddress: string | null;
+  } | null,
   rows: Listing[],
 ): HomeMapProps {
   const homePin =
@@ -56,6 +54,20 @@ function buildMapData(
   return { home: homePin, pins };
 }
 
+function buildBestPkRatingMap(
+  schoolRows: { listingId: string; gradeRange: string | null; rating: number | null }[],
+): Map<string, number> {
+  const best = new Map<string, number>();
+  for (const s of schoolRows) {
+    if (s.rating == null) continue;
+    if (!s.gradeRange) continue;
+    if (!s.gradeRange.toUpperCase().startsWith("PK")) continue;
+    const cur = best.get(s.listingId);
+    if (cur == null || s.rating > cur) best.set(s.listingId, s.rating);
+  }
+  return best;
+}
+
 export default async function HomePage() {
   const { userId } = await auth();
   const viewMode = await getViewMode();
@@ -65,25 +77,46 @@ export default async function HomePage() {
     userId ? getUserHome(userId) : Promise.resolve(null),
   ]);
 
-  const coverRows =
-    allListings.length === 0
-      ? []
-      : await db
-          .select({
-            listingId: listingPhotos.listingId,
-            r2Key: listingPhotos.r2Key,
-          })
-          .from(listingPhotos)
-          .where(eq(listingPhotos.sortOrder, 0));
+  const ids = allListings.map((l) => l.id);
+
+  const [coverRows, schoolRows] =
+    ids.length === 0
+      ? [[], []]
+      : await Promise.all([
+          db
+            .select({
+              listingId: listingPhotos.listingId,
+              r2Key: listingPhotos.r2Key,
+            })
+            .from(listingPhotos)
+            .where(eq(listingPhotos.sortOrder, 0)),
+          db
+            .select({
+              listingId: listingSchools.listingId,
+              gradeRange: listingSchools.gradeRange,
+              rating: listingSchools.rating,
+            })
+            .from(listingSchools)
+            .where(inArray(listingSchools.listingId, ids)),
+        ]);
 
   const coverMap = new Map(coverRows.map((r) => [r.listingId, r.r2Key]));
+  const bestPkRatingMap = buildBestPkRatingMap(schoolRows);
 
-  const cards: Card[] = await Promise.all(
+  const items: HomeListingItem[] = await Promise.all(
     allListings.map(async (l) => ({
-      listing: l,
+      id: l.id,
+      title: l.title,
+      address: l.address,
+      bedrooms: l.bedrooms,
+      bathrooms: l.bathrooms,
+      priceUsd: l.priceUsd,
+      bestPkRating: bestPkRatingMap.get(l.id) ?? null,
       coverUrl: coverMap.has(l.id)
         ? await urlFor(coverMap.get(l.id) as string)
         : null,
+      isOwner: !!userId && l.ownerClerkUserId === userId,
+      createdAt: l.createdAt.toISOString(),
     })),
   );
 
@@ -112,7 +145,7 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {cards.length === 0 ? (
+      {items.length === 0 ? (
         <p className="text-muted-foreground">
           No listings yet.{" "}
           <Link href="/listings/new" className="text-primary underline">
@@ -120,76 +153,9 @@ export default async function HomePage() {
           </Link>
           .
         </p>
-      ) : viewMode === "cards" ? (
-        <CardsView cards={cards} />
       ) : (
-        <ListView cards={cards} />
+        <ListingsBrowser listings={items} viewMode={viewMode} />
       )}
     </main>
-  );
-}
-
-function CardsView({ cards }: { cards: Card[] }) {
-  return (
-    <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {cards.map(({ listing, coverUrl }) => (
-        <li key={listing.id}>
-          <Link
-            href={`/listings/${listing.id}`}
-            className="block rounded-lg overflow-hidden border border-border bg-muted hover:opacity-95 transition"
-          >
-            <div className="aspect-[4/3] bg-muted">
-              {coverUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={coverUrl}
-                  alt={listing.address ?? "Listing"}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-                  No photo
-                </div>
-              )}
-            </div>
-            <div className="p-4">
-              <p className="font-medium line-clamp-1">
-                {listing.address ?? "Unknown address"}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1 flex flex-wrap gap-x-3">
-                {listing.bedrooms ? <span>{listing.bedrooms} BR</span> : null}
-                {listing.bathrooms ? (
-                  <span>{listing.bathrooms} BA</span>
-                ) : null}
-                {listing.priceUsd ? (
-                  <span className="font-semibold text-foreground">
-                    {fmtPrice(listing.priceUsd)}
-                  </span>
-                ) : null}
-              </p>
-            </div>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function ListView({ cards }: { cards: Card[] }) {
-  return (
-    <ul className="border border-border rounded divide-y divide-border">
-      {cards.map(({ listing, coverUrl }) => (
-        <ListingListRow
-          key={listing.id}
-          listingId={listing.id}
-          address={listing.address ?? listing.title ?? "Unknown address"}
-          bedrooms={listing.bedrooms}
-          bathrooms={listing.bathrooms}
-          priceUsd={listing.priceUsd}
-          coverUrl={coverUrl}
-        />
-      ))}
-    </ul>
   );
 }
