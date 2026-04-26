@@ -89,6 +89,15 @@ Family-scoped visibility via Clerk Organizations.
 
 Still planned: a backfill UI for moving pre-orgs personal listings into an active org (today the user runs SQL); disabling public sign-up in Clerk so only invited members can join.
 
+## Slice 3.2 — Detail-page map
+
+Reuses the home-page `<HomeMap>` component on `/listings/[id]`.
+
+- Renders between the schools section and comments section, gated on the listing having `latitude` + `longitude`.
+- Props: `home={null}` (the user's actual home is not shown here), `pins=[<single listing pin>]` (default blue marker labeled with the listing's address), `pois=<scope POIs>` (green markers, same as on the home page).
+- Auto-fits bounds to include the listing + every POI; with no POIs, it centers on the listing at zoom 14 (the FitBounds child handles the single-position case).
+- POIs come from `getPois({ userId, orgId })`, the same scope-aware fetch the home page uses, so family POIs are visible to every member.
+
 ## Slice 3.1 — Tags / labels
 
 User-defined labels for organizing the hunt.

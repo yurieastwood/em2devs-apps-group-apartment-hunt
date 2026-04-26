@@ -11,6 +11,8 @@ import { CommentsSection } from "./comments-section";
 import { ReactionsBar } from "./reactions-bar";
 import { NearbySchools } from "./nearby-schools";
 import { ListingPoiDistances } from "@/components/listing-poi-distances";
+import { HomeMap } from "@/components/home-map";
+import { getPois } from "@/lib/points-of-interest";
 
 import { ListingLabelsSection } from "@/components/listing-labels";
 import { userCanAccessListing } from "@/lib/listings/access";
@@ -64,6 +66,10 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
   if (!userCanAccessListing(listing, { userId, orgId })) notFound();
 
   const isOwner = userId === listing.ownerClerkUserId;
+
+  const userPois = userId ? await getPois({ userId, orgId }) : [];
+
+  const listingHasCoords = !!(listing.latitude && listing.longitude);
 
   const photos = await db
     .select()
@@ -155,6 +161,30 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
       <ListingPoiDistances listingId={listing.id} />
 
       <NearbySchools listingId={listing.id} />
+
+      {listingHasCoords ? (
+        <section className="mt-8 border-t border-border pt-6">
+          <h2 className="text-lg font-semibold mb-3">Location</h2>
+          <HomeMap
+            home={null}
+            pins={[
+              {
+                id: listing.id,
+                lat: parseFloat(listing.latitude as string),
+                lng: parseFloat(listing.longitude as string),
+                label: listing.address ?? listing.title ?? "Listing",
+              },
+            ]}
+            pois={userPois.map((p) => ({
+              id: p.id,
+              lat: parseFloat(p.lat),
+              lng: parseFloat(p.lng),
+              label: p.label,
+              address: p.address,
+            }))}
+          />
+        </section>
+      ) : null}
 
       <CommentsSection listingId={listing.id} />
     </main>

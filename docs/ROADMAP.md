@@ -53,6 +53,10 @@ Family-scoped visibility via Clerk Organizations and faster image loads via the 
 
 User-defined labels for organizing the hunt — chips on cards and a filter on the home page.
 
+## Slice 3.2 — Detail-page map ✅
+
+Listing detail page renders a map with the listing's pin and every POI in the family, just before the comments section.
+
 ---
 
 ## Backlog 💡
@@ -61,7 +65,6 @@ Grouped by priority. Add new items under whichever group fits.
 
 ### High — meaningful gaps for daily use
 
-- Show map inside listing detail, with marks for listing and points of interest
 - Advanced/Complex sorting; sort by multiple fields simultaneously, each adding on the sorting priority.
 - Priority number field for each listing; user will decide how important that listing is, and when that value change everything has to be reordered to avoid duplicate priorities.
 - Email notifications when a family member adds a listing or comments
