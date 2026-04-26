@@ -9,6 +9,15 @@ const nextConfig: NextConfig = {
     "/**": ["./bin/curl-impersonate"],
   },
 
+  // Allow next/image (if we ever switch from <img> to <Image>) to load from
+  // R2's public URL spaces.
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "*.r2.dev" },
+      { protocol: "https", hostname: "*.r2.cloudflarestorage.com" },
+    ],
+  },
+
   // Backstop the noindex/nofollow meta tag with a header so anything that
   // bypasses HTML parsing (e.g. fetch by URL, image crawlers) also sees it.
   async headers() {

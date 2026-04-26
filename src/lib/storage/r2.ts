@@ -66,7 +66,11 @@ export async function urlFor(
 ): Promise<string> {
   const base = process.env.R2_PUBLIC_URL_BASE;
   if (base) {
-    return `${base.replace(/\/$/, "")}/${encodeURIComponent(key)}`;
+    // Encode each segment but preserve the path slashes — keys look like
+    // "listings/<uuid>/<000>.jpg" and the public R2 URL needs the path
+    // structure intact.
+    const encodedKey = key.split("/").map(encodeURIComponent).join("/");
+    return `${base.replace(/\/$/, "")}/${encodedKey}`;
   }
   return getSignedUrl(
     getClient(),
