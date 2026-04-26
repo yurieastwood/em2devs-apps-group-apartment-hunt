@@ -18,17 +18,31 @@ export type HomeMapPin = {
   href?: string;
 };
 
+export type HomeMapPoi = {
+  id: string;
+  lat: number;
+  lng: number;
+  label: string;
+  address?: string;
+};
+
 export type HomeMapGoogleProps = {
   home: { lat: number; lng: number; label: string } | null;
   pins: HomeMapPin[];
+  pois?: HomeMapPoi[];
 };
 
 const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-export function HomeMapGoogle({ home, pins }: HomeMapGoogleProps) {
+export function HomeMapGoogle({
+  home,
+  pins,
+  pois = [],
+}: HomeMapGoogleProps) {
   const positions: Array<{ lat: number; lng: number }> = [];
   if (home) positions.push({ lat: home.lat, lng: home.lng });
   for (const p of pins) positions.push({ lat: p.lat, lng: p.lng });
+  for (const p of pois) positions.push({ lat: p.lat, lng: p.lng });
 
   if (positions.length === 0) {
     return (
@@ -63,6 +77,9 @@ export function HomeMapGoogle({ home, pins }: HomeMapGoogleProps) {
         >
           <FitBounds positions={positions} />
           {home ? <HomeMarker home={home} /> : null}
+          {pois.map((p) => (
+            <PoiMarker key={p.id} poi={p} />
+          ))}
           {pins.map((pin) => (
             <ListingMarker key={pin.id} pin={pin} />
           ))}
@@ -101,6 +118,32 @@ function HomeMarker({
           <strong>Your home</strong>
           <br />
           {home.label}
+        </InfoWindow>
+      ) : null}
+    </AdvancedMarker>
+  );
+}
+
+function PoiMarker({ poi }: { poi: HomeMapPoi }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <AdvancedMarker
+      position={{ lat: poi.lat, lng: poi.lng }}
+      onClick={() => setOpen((v) => !v)}
+    >
+      <Pin background="#16a34a" borderColor="#15803d" glyphColor="#ffffff" />
+      {open ? (
+        <InfoWindow
+          position={{ lat: poi.lat, lng: poi.lng }}
+          onCloseClick={() => setOpen(false)}
+        >
+          <strong>{poi.label}</strong>
+          {poi.address ? (
+            <>
+              <br />
+              {poi.address}
+            </>
+          ) : null}
         </InfoWindow>
       ) : null}
     </AdvancedMarker>

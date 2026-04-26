@@ -1,0 +1,88 @@
+"use server";
+
+import { auth } from "@clerk/nextjs/server";
+import { revalidatePath } from "next/cache";
+import { geocodeAddress } from "./geocode";
+import { deletePoiById, insertPoi, updatePoi } from "./points-of-interest";
+
+export type PoiState =
+  | { kind: "idle" }
+  | { kind: "error"; message: string }
+  | { kind: "saved" };
+
+function readField(formData: FormData, name: string): string {
+  const v = formData.get(name);
+  return typeof v === "string" ? v.trim() : "";
+}
+
+export async function addPoiAction(
+  _prev: PoiState,
+  formData: FormData,
+): Promise<PoiState> {
+  const { userId } = await auth();
+  if (!userId) return { kind: "error", message: "You're not signed in." };
+
+  const label = readField(formData, "label");
+  const address = readField(formData, "address");
+  if (!label) return { kind: "error", message: "Label is required." };
+  if (!address) return { kind: "error", message: "Address is required." };
+
+  const geo = await geocodeAddress(address);
+  if (!geo) {
+    return {
+      kind: "error",
+      message: "Couldn't find that address. Try city + state.",
+    };
+  }
+
+  await insertPoi({
+    ownerClerkUserId: userId,
+    label,
+    address: geo.displayName,
+    lat: geo.lat,
+    lng: geo.lng,
+  });
+
+  revalidatePath("/");
+  return { kind: "saved" };
+}
+
+export async function updatePoiAction(
+  poiId: string,
+  _prev: PoiState,
+  formData: FormData,
+): Promise<PoiState> {
+  const { userId } = await auth();
+  if (!userId) return { kind: "error", message: "You're not signed in." };
+
+  const label = readField(formData, "label");
+  const address = readField(formData, "address");
+  if (!label) return { kind: "error", message: "Label is required." };
+  if (!address) return { kind: "error", message: "Address is required." };
+
+  const geo = await geocodeAddress(address);
+  if (!geo) {
+    return {
+      kind: "error",
+      message: "Couldn't find that address. Try city + state.",
+    };
+  }
+
+  const updated = await updatePoi(poiId, userId, {
+    label,
+    address: geo.displayName,
+    lat: geo.lat,
+    lng: geo.lng,
+  });
+  if (!updated) return { kind: "error", message: "Couldn't update." };
+
+  revalidatePath("/");
+  return { kind: "saved" };
+}
+
+export async function deletePoiAction(poiId: string): Promise<void> {
+  const { userId } = await auth();
+  if (!userId) return;
+  await deletePoiById(poiId, userId);
+  revalidatePath("/");
+}

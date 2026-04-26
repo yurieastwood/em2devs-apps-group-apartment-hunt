@@ -8,9 +8,11 @@ import type { Listing } from "@/db/schema";
 import { urlFor } from "@/lib/storage/r2";
 import { VIEW_MODE_COOKIE, type ViewMode } from "@/lib/view-mode";
 import { getUserHome } from "@/lib/user-settings";
+import { getUserPois } from "@/lib/points-of-interest";
 import { ViewModeToggle } from "@/components/view-mode-toggle";
 import { HomeMap, type HomeMapProps } from "@/components/home-map";
 import { HomeSettingsForm } from "@/components/home-settings-form";
+import { PoisSection } from "@/components/pois-section";
 import {
   ListingsBrowser,
   type HomeListingItem,
@@ -99,9 +101,10 @@ export default async function HomePage() {
   const { userId } = await auth();
   const viewMode = await getViewMode();
 
-  const [allListings, userHome] = await Promise.all([
+  const [allListings, userHome, userPois] = await Promise.all([
     db.select().from(listings).orderBy(desc(listings.createdAt)),
     userId ? getUserHome(userId) : Promise.resolve(null),
+    userId ? getUserPois(userId) : Promise.resolve([]),
   ]);
 
   const ids = allListings.map((l) => l.id);
@@ -151,6 +154,13 @@ export default async function HomePage() {
   );
 
   const mapData = buildMapData(userHome, allListings);
+  const poiPins: HomeMapProps["pois"] = userPois.map((p) => ({
+    id: p.id,
+    lat: parseFloat(p.lat),
+    lng: parseFloat(p.lng),
+    label: p.label,
+    address: p.address,
+  }));
 
   return (
     <main className="flex-1 max-w-5xl mx-auto p-8 w-full">
@@ -159,7 +169,8 @@ export default async function HomePage() {
           key={userHome?.homeAddress ?? "no-home"}
           currentAddress={userHome?.homeAddress ?? null}
         />
-        <HomeMap home={mapData.home} pins={mapData.pins} />
+        <PoisSection />
+        <HomeMap home={mapData.home} pins={mapData.pins} pois={poiPins} />
       </section>
 
       <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
