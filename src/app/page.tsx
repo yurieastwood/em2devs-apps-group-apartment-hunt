@@ -139,6 +139,7 @@ export default async function HomePage() {
       address: l.address,
       bedrooms: l.bedrooms,
       bathrooms: l.bathrooms,
+      squareFeet: l.squareFeet,
       priceUsd: l.priceUsd,
       nearestPkRating: nearestPkRatingMap.get(l.id) ?? null,
       coverUrl: coverMap.has(l.id)

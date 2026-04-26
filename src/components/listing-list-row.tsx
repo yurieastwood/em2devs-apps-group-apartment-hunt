@@ -11,6 +11,7 @@ export type ListingListRowProps = {
   address: string;
   bedrooms: string | null;
   bathrooms: string | null;
+  squareFeet?: number | null;
   priceUsd: number | null;
   nearestPkRating?: number | null;
   coverUrl: string | null;
@@ -22,6 +23,7 @@ export function ListingListRow({
   address,
   bedrooms,
   bathrooms,
+  squareFeet,
   priceUsd,
   nearestPkRating,
   coverUrl,
@@ -42,6 +44,9 @@ export function ListingListRow({
           <p className="text-sm text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
             {bedrooms ? <span>{bedrooms} BR</span> : null}
             {bathrooms ? <span>{bathrooms} BA</span> : null}
+            {squareFeet ? (
+              <span>{squareFeet.toLocaleString("en-US")} sqft</span>
+            ) : null}
             {priceUsd ? (
               <span className="font-semibold text-foreground">
                 ${priceUsd.toLocaleString("en-US")}/mo

@@ -11,6 +11,7 @@ export type HomeListingItem = {
   address: string | null;
   bedrooms: string | null;
   bathrooms: string | null;
+  squareFeet: number | null;
   priceUsd: number | null;
   nearestPkRating: number | null;
   coverUrl: string | null;
@@ -191,6 +192,9 @@ function CardsView({ listings }: { listings: HomeListingItem[] }) {
               <p className="text-sm text-muted-foreground mt-1 flex flex-wrap gap-x-3">
                 {l.bedrooms ? <span>{l.bedrooms} BR</span> : null}
                 {l.bathrooms ? <span>{l.bathrooms} BA</span> : null}
+                {l.squareFeet ? (
+                  <span>{l.squareFeet.toLocaleString("en-US")} sqft</span>
+                ) : null}
                 {l.priceUsd ? (
                   <span className="font-semibold text-foreground">
                     {fmtPrice(l.priceUsd)}
@@ -229,6 +233,7 @@ function ListView({ listings }: { listings: HomeListingItem[] }) {
           address={l.address ?? l.title ?? "Unknown address"}
           bedrooms={l.bedrooms}
           bathrooms={l.bathrooms}
+          squareFeet={l.squareFeet}
           priceUsd={l.priceUsd}
           nearestPkRating={l.nearestPkRating}
           coverUrl={l.coverUrl}
