@@ -67,7 +67,7 @@ Find, edit, react to and comment on saved listings.
 
 Quality-of-life addition between major slices.
 
-- ✅ `/listings/import` — paste URLs (plain text or HTML with anchors); Zillow / Apartments.com URLs are auto-extracted (regex match + URL parse + supported-host filter, deduped). Client iterates the list calling `importListingAction` per URL, showing per-row status (pending → processing → done/failed). Reuses `createListingFromUrl` end-to-end so dedup, parsing, and photo rehosting work the same as single-add.
+- ✅ Bulk import — second tab on `/listings/new?mode=bulk` (single-URL is the default tab). Paste URLs as plain text or HTML with anchors; Zillow / Apartments.com URLs are auto-extracted (regex match + URL parse + supported-host filter, deduped). Client iterates the list calling `importListingAction` per URL, showing per-row status (pending → processing → done/failed). Reuses `createListingFromUrl` end-to-end so dedup, parsing, and photo rehosting work the same as single-add.
 
 ## Slice 3 — Access control 📋
 

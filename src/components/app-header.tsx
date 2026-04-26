@@ -10,12 +10,6 @@ export function AppHeader() {
         </Link>
         <nav className="flex items-center gap-4">
           <Link
-            href="/listings/import"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Import
-          </Link>
-          <Link
             href="/listings/new"
             className="text-sm text-muted-foreground hover:text-foreground"
           >
