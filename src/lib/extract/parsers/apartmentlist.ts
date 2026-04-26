@@ -40,10 +40,14 @@ function findApartmentLd(html: string): Json {
   return null;
 }
 
-// Photos are stored as Cloudinary asset ids. Build a URL with a height-fit
-// transform so we get a reasonable resolution without massive originals.
+// Photos are stored as Cloudinary asset ids. ApartmentList's Cloudinary is
+// configured with strict transforms — only specific named transforms are
+// allowed; arbitrary ones (like c_fit,h_1080) return 404. Use f_auto,q_auto
+// which is on the allowlist: full original resolution with format and
+// quality auto-negotiation. Server-side fetches receive image/jpeg by
+// default; browsers that include Accept: image/webp receive WebP.
 function buildPhotoUrl(id: string): string {
-  return `https://cdn.apartmentlist.com/image/upload/c_fit,h_1080,q_auto,f_auto/${id}.jpg`;
+  return `https://cdn.apartmentlist.com/image/upload/f_auto,q_auto/${id}.jpg`;
 }
 
 function extractPhotos(listing: Json): ListingPhoto[] {
