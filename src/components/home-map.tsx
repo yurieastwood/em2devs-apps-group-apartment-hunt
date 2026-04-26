@@ -1,17 +1,16 @@
 "use client";
 
-// Provider-agnostic wrapper for the home-page map. The current implementation
-// is OpenStreetMap + Leaflet. To switch to Mapbox or Google Maps later, write
-// a sibling file (e.g. home-map-mapbox.tsx) that exports a component with the
-// same props (HomeMapLeafletProps shape) and replace the dynamic import below.
+// Provider-agnostic wrapper for the home-page map. Currently Google Maps via
+// @vis.gl/react-google-maps. To swap providers, write a sibling impl with
+// the same prop shape (HomeMapGoogleProps) and change the import below.
 import dynamic from "next/dynamic";
-import type { HomeMapLeafletProps } from "./home-map-leaflet";
+import type { HomeMapGoogleProps } from "./home-map-google";
 
-export type HomeMapProps = HomeMapLeafletProps;
+export type HomeMapProps = HomeMapGoogleProps;
 
 export const HomeMap = dynamic(
   () =>
-    import("./home-map-leaflet").then((mod) => mod.HomeMapLeaflet),
+    import("./home-map-google").then((mod) => mod.HomeMapGoogle),
   {
     ssr: false,
     loading: () => (
