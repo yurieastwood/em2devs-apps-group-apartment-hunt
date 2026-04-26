@@ -45,3 +45,23 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+/* Google Maps InfoWindow overrides — defaults to white with no per-instance
+   styling hooks, so we target the framework's classes globally and flip them
+   onto our theme tokens (dark in dark mode, light in light mode). */
+.gm-style .gm-style-iw-c,
+.gm-style .gm-style-iw-d {
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+/* The little tail / pointer below the bubble */
+.gm-style .gm-style-iw-tc::after {
+  background: var(--background) !important;
+}
+
+/* The close-X button uses an SVG mask whose background-color controls the
+   icon color. Flip it to the foreground so it stays visible on dark bg. */
+.gm-style .gm-ui-hover-effect > span {
+  background-color: var(--foreground) !important;
+}
