@@ -36,7 +36,7 @@ function UrlField() {
         className="border border-border bg-input-background text-foreground rounded p-2 font-mono text-sm placeholder:text-muted-foreground disabled:opacity-60"
       />
       <span className="text-xs text-muted-foreground">
-        Zillow or Apartments.com.
+        Zillow, Apartments.com, or ApartmentList.com.
       </span>
     </label>
   );

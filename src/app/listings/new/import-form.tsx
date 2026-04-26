@@ -12,7 +12,8 @@ type RowStatus =
 
 type Row = { url: string; status: RowStatus };
 
-const SUPPORTED_HOST_RE = /^(www\.)?(zillow\.com|apartments\.com)$/i;
+const SUPPORTED_HOST_RE =
+  /^(www\.)?(zillow\.com|apartments\.com|apartmentlist\.com)$/i;
 const TRAILING_PUNCTUATION_RE = /[.,;)\]}]+$/;
 
 function extractUrls(text: string): string[] {
@@ -88,7 +89,7 @@ export function ImportForm() {
           onChange={(e) => setText(e.target.value)}
           rows={10}
           disabled={running}
-          placeholder="Paste your Zillow / Apartments.com favorites here. Both plain URLs and HTML are detected."
+          placeholder="Paste your Zillow, Apartments.com, or ApartmentList.com favorites here. Plain URLs or HTML both work."
           className="border border-border bg-input-background text-foreground rounded p-2 text-sm font-mono placeholder:text-muted-foreground"
         />
         <span className="text-xs text-muted-foreground">

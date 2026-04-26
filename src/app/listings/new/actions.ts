@@ -14,7 +14,7 @@ function messageFor(err: CreateListingError): string {
     case "invalid_url":
       return "That doesn't look like a valid URL.";
     case "unsupported_host":
-      return `We don't support ${err.host} yet — try a Zillow or Apartments.com URL.`;
+      return `We don't support ${err.host} yet — try Zillow, Apartments.com, or ApartmentList.com.`;
     case "fetch_failed":
       return `Could not fetch the listing (HTTP ${err.status}). The site may have updated its bot detection — try again later.`;
     case "duplicate":

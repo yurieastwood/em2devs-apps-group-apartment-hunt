@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { listingPhotos, listings } from "@/db/schema";
 import { fetchListing } from "../extract/fetch-listing";
+import { parseApartmentList } from "../extract/parsers/apartmentlist";
 import { parseApartments } from "../extract/parsers/apartments";
 import { parseZillow } from "../extract/parsers/zillow";
 import type { ParsedListing } from "../extract/types";
@@ -12,6 +13,7 @@ type Parser = (url: string, html: string) => ParsedListing;
 const PARSERS: Record<string, Parser> = {
   "zillow.com": parseZillow,
   "apartments.com": parseApartments,
+  "apartmentlist.com": parseApartmentList,
 };
 
 export type CreateListingError =

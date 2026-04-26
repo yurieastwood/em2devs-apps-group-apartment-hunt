@@ -43,6 +43,7 @@ Paste a Zillow or Apartments.com URL → structured listing with rehosted photos
 - ✅ `listings` + `listing_photos` schema with cascade delete and indexes
 - ✅ Zillow parser: JSON-LD (Schema.org `RealEstateListing`) + `__NEXT_DATA__.gdpClientCache.property`
 - ✅ Apartments.com parser: JSON-LD `@graph[0].mainEntity` + the inline `ProfileStartup({ rentals: [...] })` block for beds/baths/sqft
+- ✅ ApartmentList.com parser: JSON-LD `Apartment` block for beds/baths + `__NEXT_DATA__.props.pageProps.component.listing` for address, geo, price, sqft, description, and `all_photos[].id` (Cloudinary asset ids → reconstructed via `c_fit,h_1080,q_auto,f_auto` transform). Wired into `profileCandidates`, `PARSERS`, the bulk-import host filter, and the form helper texts.
 - ✅ Photo rehoster: plain `fetch()` first (Zillow CDN), `curl-impersonate` fallback (Apartments.com / Akamai); batches of 4 in parallel
 - ✅ `createListingFromUrl` orchestrator: validate URL → dedup → fetch → parse → insert listing → rehost photos → insert photo rows
 - ✅ Paste-URL form (`/listings/new`) with `useFormStatus` progress UI: spinner + "10–15 seconds — please don't close this tab"

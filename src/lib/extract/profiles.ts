@@ -30,6 +30,14 @@ const CANDIDATES_BY_HOST: Record<string, string[]> = {
     "edge101",
     "safari260",
   ],
+  "apartmentlist.com": [
+    "chrome145",
+    "chrome146",
+    "chrome142",
+    "firefox147",
+    "edge101",
+    "safari260",
+  ],
 };
 
 export function profileCandidates(url: string): string[] {
