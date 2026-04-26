@@ -24,9 +24,9 @@ function extractNextData(html: string): Json {
   return m ? safeJsonParse(m[1]) : null;
 }
 
-// Walks every JSON-LD block looking for an Apartment / Residence entity —
-// the page emits seven blocks and which index holds bed/bath info isn't
-// stable across pages, so locate it by @type.
+// JSON-LD's Apartment block describes one specific unit on the page (often
+// not the unit whose price ApartmentList shows in headers), so we don't
+// rely on it for beds / baths. Kept as a defensive fallback only.
 function findApartmentLd(html: string): Json {
   const blocks = [
     ...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g),
@@ -40,18 +40,51 @@ function findApartmentLd(html: string): Json {
   return null;
 }
 
-// Photos are stored as Cloudinary asset ids. ApartmentList's Cloudinary is
-// configured with strict transforms — only specific named transforms are
-// allowed; arbitrary ones (like c_fit,h_1080) return 404. Use f_auto,q_auto
-// which is on the allowlist: full original resolution with format and
-// quality auto-negotiation. Server-side fetches receive image/jpeg by
-// default; browsers that include Accept: image/webp receive WebP.
 function buildPhotoUrl(id: string): string {
   return `https://cdn.apartmentlist.com/image/upload/f_auto,q_auto/${id}.jpg`;
 }
 
-// ApartmentList ships a flat array of up to ~50 schools attached to the page,
-// not the listing object — at component.schools. Each entry is rich.
+function extractPhotos(listing: Json): ListingPhoto[] {
+  const all = get(listing, "all_photos");
+  if (!Array.isArray(all)) return [];
+  const photos: ListingPhoto[] = [];
+  for (const p of all) {
+    const id = asString(get(p, "id"));
+    if (id) photos.push({ url: buildPhotoUrl(id) });
+  }
+  return photos;
+}
+
+// ApartmentList listings often have many "available_units" (floor plans),
+// some with price > 0 (actually rentable now) and many with price = 0
+// (placeholder / coming soon). Each plan has its own bed / bath / price /
+// sqft, so we pick a single plan and source all four fields from it to
+// keep them consistent.
+//
+// Strategy: prefer the plan whose price matches `available_units[0].price`
+// when that price is non-zero (the same plan ApartmentList usually shows
+// in the header — empirically the one we'd been picking before). Fall
+// back to the cheapest available plan, then to the very first plan.
+function pickFloorPlan(listing: Json): Json {
+  const all = get(listing, "available_units");
+  if (!Array.isArray(all) || all.length === 0) return null;
+
+  const headPrice = asNum(get(all[0], "price"));
+  if (headPrice != null && headPrice > 0) return all[0];
+
+  const available = all.filter((u) => {
+    const p = asNum(get(u, "price"));
+    return p != null && p > 0;
+  });
+  if (available.length === 0) return all[0];
+
+  return available.reduce<Json>((cheapest, u) => {
+    const cp = asNum(get(cheapest, "price")) ?? Number.POSITIVE_INFINITY;
+    const up = asNum(get(u, "price")) ?? Number.POSITIVE_INFINITY;
+    return up < cp ? u : cheapest;
+  }, available[0]);
+}
+
 function extractSchools(component: Json): ParsedSchool[] {
   const list = get(component, "schools");
   if (!Array.isArray(list)) return [];
@@ -79,17 +112,6 @@ function extractSchools(component: Json): ParsedSchool[] {
   return out;
 }
 
-function extractPhotos(listing: Json): ListingPhoto[] {
-  const all = get(listing, "all_photos");
-  if (!Array.isArray(all)) return [];
-  const photos: ListingPhoto[] = [];
-  for (const p of all) {
-    const id = asString(get(p, "id"));
-    if (id) photos.push({ url: buildPhotoUrl(id) });
-  }
-  return photos;
-}
-
 export function parseApartmentList(
   sourceUrl: string,
   html: string,
@@ -106,11 +128,10 @@ export function parseApartmentList(
   const component = get(nextData, "props", "pageProps", "component");
   const listing = get(component, "listing");
 
-  const units = get(listing, "available_units");
-  const firstUnit = Array.isArray(units) ? units[0] : null;
+  const plan = pickFloorPlan(listing);
 
-  const rawSqft = asNum(get(firstUnit, "sqft"));
-  const squareFeet = rawSqft != null && rawSqft > 0 ? rawSqft : null;
+  const planSqft = asNum(get(plan, "sqft"));
+  const squareFeet = planSqft != null && planSqft > 0 ? planSqft : null;
 
   return {
     sourceUrl,
@@ -135,15 +156,19 @@ export function parseApartmentList(
       asString(get(listing, "zip")) ?? asString(get(ldAddr, "postalCode")),
     latitude: asNum(get(listing, "lat")) ?? asNum(get(ldGeo, "latitude")),
     longitude: asNum(get(listing, "lon")) ?? asNum(get(ldGeo, "longitude")),
-    bedrooms: asNum(get(aptLd, "numberOfBedrooms")),
-    bathrooms: asNum(get(aptLd, "numberOfBathroomsTotal")),
+    bedrooms:
+      asNum(get(plan, "bed")) ??
+      asNum(get(aptLd, "numberOfBedrooms")),
+    bathrooms:
+      asNum(get(plan, "bath")) ??
+      asNum(get(aptLd, "numberOfBathroomsTotal")),
     squareFeet,
-    priceUsd: asNum(get(firstUnit, "price")),
+    priceUsd: asNum(get(plan, "price")),
     description:
       asString(get(listing, "description")) ??
       asString(get(ld, "description")),
     photos: extractPhotos(listing),
     schools: extractSchools(component),
-    raw: { jsonLd: ld, apartmentLd: aptLd, listing },
+    raw: { jsonLd: ld, apartmentLd: aptLd, listing, pickedPlan: plan },
   };
 }
