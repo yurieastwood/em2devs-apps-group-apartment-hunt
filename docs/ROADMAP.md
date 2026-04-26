@@ -69,6 +69,12 @@ Quality-of-life addition between major slices.
 
 - ✅ Bulk import — second tab on `/listings/new?mode=bulk` (single-URL is the default tab). Paste URLs as plain text or HTML with anchors; Zillow / Apartments.com URLs are auto-extracted (regex match + URL parse + supported-host filter, deduped). Client iterates the list calling `importListingAction` per URL, showing per-row status (pending → processing → done/failed). Reuses `createListingFromUrl` end-to-end so dedup, parsing, and photo rehosting work the same as single-add.
 
+## Slice 2.6 — Auth-gated health endpoint ✅
+
+Lock down the diagnostic so it's not a free public scraping endpoint.
+
+- ✅ `/api/health/scrape` accepts either a signed-in Clerk session OR an `Authorization: Bearer <HEALTH_AUTH_TOKEN>` header. Anything else returns `401` with `WWW-Authenticate: Bearer realm="health"`. Constant-time comparison (`crypto.timingSafeEqual`) on the token. The route stays in the public middleware matcher so the Bearer path can reach the handler; auth happens inside the handler.
+
 ## Slice 3 — Access control 📋
 
 Invite-only, family-scoped access.
@@ -93,6 +99,7 @@ Not yet scoped to a slice; pull from this list when ready.
 - Make R2 photo keys unguessable (random ULIDs instead of `<listing-id>/000.jpg`) for defense-in-depth
 - Browser bookmarklet fallback for sites we can't scrape from Vercel IPs
 - Export listing as PDF / shareable summary
+- Evaluate Clerk's APIKeys product (per-user / per-machine API keys with server-side verification) once we have multiple machine clients or want to gate `/api/**` more granularly. Defer until post-MVP.
 
 ---
 

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { timingSafeEqual } from "node:crypto";
 import { fetchListing } from "@/lib/extract/fetch-listing";
 
 export const runtime = "nodejs";
@@ -72,7 +74,35 @@ async function probe(url: string): Promise<ProbeResult> {
   }
 }
 
-export async function GET() {
+function checkBearerToken(req: Request): boolean {
+  const expected = process.env.HEALTH_AUTH_TOKEN;
+  if (!expected) return false;
+
+  const header = req.headers.get("authorization");
+  if (!header) return false;
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  if (!match) return false;
+
+  const provided = Buffer.from(match[1]);
+  const expectedBuf = Buffer.from(expected);
+  if (provided.length !== expectedBuf.length) return false;
+  return timingSafeEqual(provided, expectedBuf);
+}
+
+async function isAuthorized(req: Request): Promise<boolean> {
+  const { userId } = await auth();
+  if (userId) return true;
+  return checkBearerToken(req);
+}
+
+export async function GET(req: Request) {
+  if (!(await isAuthorized(req))) {
+    return new NextResponse("Unauthorized", {
+      status: 401,
+      headers: { "WWW-Authenticate": 'Bearer realm="health"' },
+    });
+  }
+
   const started = Date.now();
   const results = await Promise.all(PROBE_URLS.map(probe));
   return NextResponse.json({
