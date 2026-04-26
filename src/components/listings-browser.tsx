@@ -5,12 +5,19 @@ import Link from "next/link";
 import { DeleteListingButton } from "@/components/delete-listing-button";
 import { ListingListRow } from "@/components/listing-list-row";
 import { fmtTransitDuration } from "@/lib/transit-format";
+import { labelChipClasses } from "@/lib/label-color";
 
 export type HomePoiDistance = {
   poiId: string;
   label: string;
   durationSeconds: number | null;
   distanceMeters: number | null;
+};
+
+export type HomeLabel = {
+  id: string;
+  name: string;
+  color: string | null;
 };
 
 export type HomeListingItem = {
@@ -26,6 +33,7 @@ export type HomeListingItem = {
   isOwner: boolean;
   createdAt: string;
   poiDistances: HomePoiDistance[];
+  labels: HomeLabel[];
 };
 
 type SortOption =
@@ -61,15 +69,18 @@ function fmtPrice(n: number | null): string | null {
 export function ListingsBrowser({
   listings,
   viewMode,
+  scopeLabels,
 }: {
   listings: HomeListingItem[];
   viewMode: "cards" | "list";
+  scopeLabels: HomeLabel[];
 }) {
   const [sort, setSort] = useState<SortOption>("newest");
   const [minBeds, setMinBeds] = useState(0);
   const [minBaths, setMinBaths] = useState(0);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [minPkRating, setMinPkRating] = useState(0);
+  const [activeLabels, setActiveLabels] = useState<Set<string>>(new Set());
 
   const visible = useMemo(() => {
     const filtered = listings.filter((l) => {
@@ -88,6 +99,10 @@ export function ListingsBrowser({
         if (l.nearestPkRating == null || l.nearestPkRating < minPkRating) {
           return false;
         }
+      }
+      if (activeLabels.size > 0) {
+        const hit = l.labels.some((lbl) => activeLabels.has(lbl.id));
+        if (!hit) return false;
       }
       return true;
     });
@@ -109,7 +124,16 @@ export function ListingsBrowser({
       "rating-desc": (a, b) => (b.nearestPkRating ?? -1) - (a.nearestPkRating ?? -1),
     };
     return [...filtered].sort(sorter[sort]);
-  }, [listings, sort, minBeds, minBaths, maxPrice, minPkRating]);
+  }, [listings, sort, minBeds, minBaths, maxPrice, minPkRating, activeLabels]);
+
+  function toggleLabel(id: string) {
+    setActiveLabels((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   return (
     <div>
@@ -149,6 +173,13 @@ export function ListingsBrowser({
           active={minPkRating}
           onChange={setMinPkRating}
         />
+        {scopeLabels.length > 0 ? (
+          <LabelFilterGroup
+            labels={scopeLabels}
+            active={activeLabels}
+            onToggle={toggleLabel}
+          />
+        ) : null}
       </div>
 
       <p className="text-xs text-muted-foreground mb-4">
@@ -166,6 +197,56 @@ export function ListingsBrowser({
       ) : (
         <ListView listings={visible} />
       )}
+    </div>
+  );
+}
+
+function LabelFilterGroup({
+  labels,
+  active,
+  onToggle,
+}: {
+  labels: HomeLabel[];
+  active: Set<string>;
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-muted-foreground">Labels</span>
+      <div className="flex flex-wrap gap-1">
+        {labels.map((l) => {
+          const on = active.has(l.id);
+          return (
+            <button
+              key={l.id}
+              type="button"
+              onClick={() => onToggle(l.id)}
+              aria-pressed={on}
+              className={`px-2 py-0.5 rounded-full border text-xs transition-opacity ${labelChipClasses(l.color)} ${
+                on ? "ring-2 ring-foreground/40" : "opacity-60 hover:opacity-100"
+              }`}
+            >
+              {l.name}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function LabelChips({ labels }: { labels: HomeLabel[] }) {
+  if (labels.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1 mt-1">
+      {labels.map((l) => (
+        <span
+          key={l.id}
+          className={`inline-flex items-center px-2 py-0.5 rounded-full border text-xs ${labelChipClasses(l.color)}`}
+        >
+          {l.name}
+        </span>
+      ))}
     </div>
   );
 }
@@ -225,6 +306,7 @@ function CardsView({ listings }: { listings: HomeListingItem[] }) {
                   ))}
                 </p>
               ) : null}
+              <LabelChips labels={l.labels} />
             </div>
           </Link>
           {l.isOwner ? (
@@ -258,6 +340,7 @@ function ListView({ listings }: { listings: HomeListingItem[] }) {
           coverUrl={l.coverUrl}
           isOwner={l.isOwner}
           poiDistances={l.poiDistances}
+          labels={l.labels}
         />
       ))}
     </ul>

@@ -9,12 +9,16 @@ import {
   listingSchools,
   listings,
 } from "@/db/schema";
-import type { Listing } from "@/db/schema";
+import type { Label, Listing } from "@/db/schema";
 import { urlFor } from "@/lib/storage/r2";
 import { VIEW_MODE_COOKIE, type ViewMode } from "@/lib/view-mode";
 import { getUserHome } from "@/lib/user-settings";
 import { getUserPois } from "@/lib/points-of-interest";
 import { listingScope } from "@/lib/listings/access";
+import {
+  getLabelsForListings,
+  listLabelsInScope,
+} from "@/lib/listings/labels";
 import { ViewModeToggle } from "@/components/view-mode-toggle";
 import { HomeMap, type HomeMapProps } from "@/components/home-map";
 import { HomeSettingsForm } from "@/components/home-settings-form";
@@ -109,12 +113,13 @@ export default async function HomePage() {
 
   const scope = listingScope({ userId, orgId });
 
-  const [allListings, userHome, userPois] = await Promise.all([
+  const [allListings, userHome, userPois, scopeLabels] = await Promise.all([
     scope
       ? db.select().from(listings).where(scope).orderBy(desc(listings.createdAt))
       : Promise.resolve([]),
     userId ? getUserHome(userId) : Promise.resolve(null),
     userId ? getUserPois(userId) : Promise.resolve([]),
+    userId ? listLabelsInScope({ userId, orgId }) : Promise.resolve([]),
   ]);
 
   const ids = allListings.map((l) => l.id);
@@ -163,6 +168,8 @@ export default async function HomePage() {
 
   const coverMap = new Map(coverRows.map((r) => [r.listingId, r.r2Key]));
   const nearestPkRatingMap = buildNearestPkRatingMap(schoolRows);
+  const labelsByListing: Map<string, Label[]> =
+    ids.length === 0 ? new Map() : await getLabelsForListings(ids);
 
   const poiLabelMap = new Map(userPois.map((p) => [p.id, p.label]));
   const distMap = new Map<
@@ -196,6 +203,11 @@ export default async function HomePage() {
       priceUsd: l.priceUsd,
       nearestPkRating: nearestPkRatingMap.get(l.id) ?? null,
       poiDistances: distMap.get(l.id) ?? [],
+      labels: (labelsByListing.get(l.id) ?? []).map((lbl) => ({
+        id: lbl.id,
+        name: lbl.name,
+        color: lbl.color,
+      })),
       coverUrl: coverMap.has(l.id)
         ? await urlFor(coverMap.get(l.id) as string)
         : null,
@@ -246,7 +258,15 @@ export default async function HomePage() {
           .
         </p>
       ) : (
-        <ListingsBrowser listings={items} viewMode={viewMode} />
+        <ListingsBrowser
+          listings={items}
+          viewMode={viewMode}
+          scopeLabels={scopeLabels.map((l) => ({
+            id: l.id,
+            name: l.name,
+            color: l.color,
+          }))}
+        />
       )}
     </main>
   );

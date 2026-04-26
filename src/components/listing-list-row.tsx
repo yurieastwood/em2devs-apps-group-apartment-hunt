@@ -6,12 +6,19 @@ import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { DeleteListingButton } from "./delete-listing-button";
 import { fmtTransitDuration } from "@/lib/transit-format";
+import { labelChipClasses } from "@/lib/label-color";
 
 export type ListingListRowPoi = {
   poiId: string;
   label: string;
   durationSeconds: number | null;
   distanceMeters: number | null;
+};
+
+export type ListingListRowLabel = {
+  id: string;
+  name: string;
+  color: string | null;
 };
 
 export type ListingListRowProps = {
@@ -25,6 +32,7 @@ export type ListingListRowProps = {
   coverUrl: string | null;
   isOwner?: boolean;
   poiDistances?: ListingListRowPoi[];
+  labels?: ListingListRowLabel[];
 };
 
 export function ListingListRow({
@@ -38,6 +46,7 @@ export function ListingListRow({
   coverUrl,
   isOwner,
   poiDistances,
+  labels,
 }: ListingListRowProps) {
   const [open, setOpen] = useState(false);
 
@@ -76,6 +85,18 @@ export function ListingListRow({
                 </span>
               ))}
             </p>
+          ) : null}
+          {labels && labels.length > 0 ? (
+            <div className="flex flex-wrap gap-1 mt-0.5">
+              {labels.map((l) => (
+                <span
+                  key={l.id}
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full border text-xs ${labelChipClasses(l.color)}`}
+                >
+                  {l.name}
+                </span>
+              ))}
+            </div>
           ) : null}
         </div>
         <div className="flex items-center gap-3 shrink-0">

@@ -5,6 +5,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -144,6 +145,47 @@ export const listingSchools = pgTable(
   }),
 );
 
+export const labels = pgTable(
+  "labels",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+    orgId: text("org_id"),
+    name: text("name").notNull(),
+    color: text("color"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    scopeIdx: index("labels_scope_idx").on(t.ownerClerkUserId, t.orgId),
+    nameUnique: uniqueIndex("labels_scope_name_idx").on(
+      t.ownerClerkUserId,
+      t.orgId,
+      t.name,
+    ),
+  }),
+);
+
+export const listingLabels = pgTable(
+  "listing_labels",
+  {
+    listingId: uuid("listing_id")
+      .notNull()
+      .references(() => listings.id, { onDelete: "cascade" }),
+    labelId: uuid("label_id")
+      .notNull()
+      .references(() => labels.id, { onDelete: "cascade" }),
+    assignedAt: timestamp("assigned_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.listingId, t.labelId] }),
+    labelIdx: index("listing_labels_label_idx").on(t.labelId),
+  }),
+);
+
 export const pointsOfInterest = pgTable(
   "points_of_interest",
   {
@@ -216,3 +258,7 @@ export type PointOfInterest = typeof pointsOfInterest.$inferSelect;
 export type NewPointOfInterest = typeof pointsOfInterest.$inferInsert;
 export type ListingPoiDistance = typeof listingPoiDistances.$inferSelect;
 export type NewListingPoiDistance = typeof listingPoiDistances.$inferInsert;
+export type Label = typeof labels.$inferSelect;
+export type NewLabel = typeof labels.$inferInsert;
+export type ListingLabel = typeof listingLabels.$inferSelect;
+export type NewListingLabel = typeof listingLabels.$inferInsert;

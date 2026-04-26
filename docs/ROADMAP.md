@@ -90,6 +90,16 @@ Per-user POIs (Work, school, family) with transit-based distance to every listin
 - ✅ Google Distance Matrix integration (server-side, mode=transit, `departure_time=now`). Separate `GOOGLE_MAPS_SERVER_KEY` env var (the public Maps JS key won't work server-to-server because of HTTP-referrer restrictions). Eager compute on POI add (POI × all listings) and on listing add (new listing × all POIs); results cached in `listing_poi_distances` so subsequent renders don't pay the API cost.
 - ✅ Display: home cards/rows show "🚌 Work: 25 min" per POI under the BR/BA/price line; listing detail page renders a "Transit times" section listing each POI with duration + miles. Pure formatters in `src/lib/transit-format.ts` so server and client components can share them.
 
+## Slice 3.1 — Tags / labels ✅
+
+User-defined labels for organizing the hunt (favorite, tour scheduled, rejected, custom).
+
+- ✅ Schema: `labels` (id, owner_clerk_user_id, org_id nullable, name, color, created_at; unique by scope+name) and `listing_labels` join (composite PK on listing_id + label_id, cascade-deletes).
+- ✅ CRUD actions and lib helpers in `src/lib/listings/labels{,-actions}.ts`. Labels live in the same scope as listings (org or personal).
+- ✅ Detail-page editor (`<ListingLabelsSection>` + `<LabelsEditor>`): chip per applied label with × to remove, "+ Add label" opens a picker showing unapplied scope labels, "+ New label" inline form (name + 8-color palette).
+- ✅ Home page: each card / list row renders the listing's labels as colored chips; controls bar gains a labels filter chip group (multi-select with OR semantics — a listing matches if it has any of the selected labels).
+- 💡 Future: bulk-apply labels from the home page (select multiple listings → apply / remove a label across all).
+
 ## Slice 3 — Access control 🔄
 
 Invite-only, family-scoped access.

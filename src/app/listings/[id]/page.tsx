@@ -11,6 +11,7 @@ import { CommentsSection } from "./comments-section";
 import { ReactionsBar } from "./reactions-bar";
 import { NearbySchools } from "./nearby-schools";
 import { ListingPoiDistances } from "@/components/listing-poi-distances";
+import { ListingLabelsSection } from "@/components/listing-labels";
 import { userCanAccessListing } from "@/lib/listings/access";
 
 export const runtime = "nodejs";
@@ -143,6 +144,8 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
           </>
         ) : null}
       </div>
+
+      <ListingLabelsSection listingId={listing.id} />
 
       <div className="mt-6">
         <ReactionsBar listingId={listing.id} />
