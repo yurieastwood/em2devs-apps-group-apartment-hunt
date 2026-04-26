@@ -63,6 +63,7 @@ Find, edit, react to and comment on saved listings.
 - ✅ Comments UI on detail page — post + thread, author avatar/name from Clerk, owner-only delete
 - ✅ Reactions UI on detail page — fixed emoji set (❤️ 👍 🔥 😍 🤔 👎), click to toggle, count + your-own-reaction highlighted
 - ✅ Home-page map — OpenStreetMap + Leaflet (provider-pluggable: swap `home-map.tsx` to load a different impl to switch to Mapbox or Google later). User home address geocoded via Nominatim, stored as lat/lng in `user_settings`. Map auto-fits to home + every listing's pin; click a listing pin to open its detail page.
+- ✅ Nearby pre-K schools — Overpass API (`amenity=kindergarten`) data on both surfaces. Toggle on the home-page map (`show_schools` cookie) renders schools within 5 km of home (or the centroid of listings if no home set) as small green pin markers. Detail page shows top 5 closest schools within 1.5 km of the listing with distance + address (when OSM has them). Overpass responses cached for 1h via Next.js fetch cache to be a good citizen.
 
 ## Slice 2.5 — Bulk import ✅
 
@@ -101,6 +102,8 @@ Not yet scoped to a slice; pull from this list when ready.
 - Browser bookmarklet fallback for sites we can't scrape from Vercel IPs
 - Export listing as PDF / shareable summary
 - Evaluate Clerk's APIKeys product (per-user / per-machine API keys with server-side verification) once we have multiple machine clients or want to gate `/api/**` more granularly. Defer until post-MVP.
+- Evaluate Google Places API for pre-K schools (and other POIs) — broader / more accurate coverage than OSM, especially for private preschools. Requires GCP billing. Backup data source if OSM gaps become noticeable.
+- Evaluate GreatSchools API for school **ratings** specifically — OSM and Google Places both lack rating data. Likely the natural pivot once we want to compare/sort listings by school quality. US-only; partner approval required. Probably the next data integration after MVP.
 
 ---
 

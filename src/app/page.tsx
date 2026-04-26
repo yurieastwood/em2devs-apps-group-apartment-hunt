@@ -7,11 +7,14 @@ import { listingPhotos, listings } from "@/db/schema";
 import type { Listing } from "@/db/schema";
 import { urlFor } from "@/lib/storage/r2";
 import { VIEW_MODE_COOKIE, type ViewMode } from "@/lib/view-mode";
+import { SHOW_SCHOOLS_COOKIE } from "@/lib/show-schools";
 import { getUserHome } from "@/lib/user-settings";
+import { fetchPreschoolsAround } from "@/lib/places/overpass";
 import { ViewModeToggle } from "@/components/view-mode-toggle";
 import { ListingListRow } from "@/components/listing-list-row";
 import { HomeMap, type HomeMapProps } from "@/components/home-map";
 import { HomeSettingsForm } from "@/components/home-settings-form";
+import { ShowSchoolsToggle } from "@/components/show-schools-toggle";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +31,22 @@ function fmtPrice(n: number | null): string | null {
 async function getViewMode(): Promise<ViewMode> {
   const c = await cookies();
   return c.get(VIEW_MODE_COOKIE)?.value === "list" ? "list" : "cards";
+}
+
+async function getShowSchools(): Promise<boolean> {
+  const c = await cookies();
+  return c.get(SHOW_SCHOOLS_COOKIE)?.value === "true";
+}
+
+function pickSchoolSearchCenter(
+  home: HomeMapProps["home"],
+  pins: HomeMapProps["pins"],
+): { lat: number; lng: number } | null {
+  if (home) return { lat: home.lat, lng: home.lng };
+  if (pins.length === 0) return null;
+  const sumLat = pins.reduce((s, p) => s + p.lat, 0);
+  const sumLng = pins.reduce((s, p) => s + p.lng, 0);
+  return { lat: sumLat / pins.length, lng: sumLng / pins.length };
 }
 
 function buildMapData(
@@ -59,6 +78,7 @@ function buildMapData(
 export default async function HomePage() {
   const { userId } = await auth();
   const viewMode = await getViewMode();
+  const showSchools = await getShowSchools();
 
   const [allListings, userHome] = await Promise.all([
     db.select().from(listings).orderBy(desc(listings.createdAt)),
@@ -89,6 +109,21 @@ export default async function HomePage() {
 
   const mapData = buildMapData(userHome, allListings);
 
+  let schools: HomeMapProps["schools"] = [];
+  if (showSchools) {
+    const center = pickSchoolSearchCenter(mapData.home, mapData.pins);
+    if (center) {
+      const found = await fetchPreschoolsAround(center.lat, center.lng, 5000);
+      schools = found.map((s) => ({
+        id: s.id,
+        lat: s.lat,
+        lng: s.lng,
+        name: s.name,
+        address: s.address,
+      }));
+    }
+  }
+
   return (
     <main className="flex-1 max-w-5xl mx-auto p-8 w-full">
       <section className="mb-8">
@@ -96,7 +131,19 @@ export default async function HomePage() {
           key={userHome?.homeAddress ?? "no-home"}
           currentAddress={userHome?.homeAddress ?? null}
         />
-        <HomeMap home={mapData.home} pins={mapData.pins} />
+        <HomeMap
+          home={mapData.home}
+          pins={mapData.pins}
+          schools={schools}
+        />
+        <div className="flex items-center gap-3 mt-2">
+          <ShowSchoolsToggle enabled={showSchools} />
+          {showSchools && schools && schools.length > 0 ? (
+            <span className="text-xs text-muted-foreground">
+              {schools.length} pre-K school{schools.length === 1 ? "" : "s"} within 5 km
+            </span>
+          ) : null}
+        </div>
       </section>
 
       <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">

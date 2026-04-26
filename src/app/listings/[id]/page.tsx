@@ -9,6 +9,7 @@ import { PhotoCarousel } from "@/components/photo-carousel";
 import { DeleteButton } from "./delete-button";
 import { CommentsSection } from "./comments-section";
 import { ReactionsBar } from "./reactions-bar";
+import { NearbySchools } from "./nearby-schools";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -140,6 +141,11 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
       <div className="mt-6">
         <ReactionsBar listingId={listing.id} />
       </div>
+
+      <NearbySchools
+        lat={listing.latitude ? parseFloat(listing.latitude) : null}
+        lng={listing.longitude ? parseFloat(listing.longitude) : null}
+      />
 
       <CommentsSection listingId={listing.id} />
     </main>
