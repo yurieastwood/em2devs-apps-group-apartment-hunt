@@ -58,6 +58,7 @@ export async function createLabelAction(
 
   await createLabelInScope({ userId, orgId }, name, color);
   revalidatePath("/");
+  revalidatePath("/listings/[id]", "page");
   return { kind: "saved" };
 }
 
@@ -66,6 +67,7 @@ export async function deleteLabelAction(labelId: string): Promise<void> {
   if (!userId) return;
   await deleteLabelInScope({ userId, orgId }, labelId);
   revalidatePath("/");
+  revalidatePath("/listings/[id]", "page");
 }
 
 export async function applyLabelAction(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
 import {
   applyLabelAction,
@@ -150,15 +150,17 @@ function CreateLabelForm({ onDone }: { onDone: () => void }) {
     initial,
   );
   const [color, setColor] = useState<string>("gray");
+  const formRef = useRef<HTMLFormElement>(null);
 
-  // Close after successful create — parent re-renders via revalidatePath,
-  // so the new label appears in the list.
-  if (state.kind === "saved") {
-    queueMicrotask(onDone);
-  }
+  useEffect(() => {
+    if (state.kind === "saved") {
+      formRef.current?.reset();
+      onDone();
+    }
+  }, [state, onDone]);
 
   return (
-    <form action={formAction} className="flex items-center gap-1">
+    <form ref={formRef} action={formAction} className="flex items-center gap-1">
       <input
         type="text"
         name="name"
