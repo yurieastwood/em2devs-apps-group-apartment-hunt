@@ -49,7 +49,7 @@ Paste a Zillow or Apartments.com URL → structured listing with rehosted photos
 - ✅ Detail page (`/listings/[id]`) with embla photo carousel + yet-another-react-lightbox fullscreen viewer
 - ✅ Photo rehost-error surfacing: failures recorded in `listings.raw.photoErrors`; collapsible diagnostic block on detail page
 
-## Slice 2 — Browse + Manage + Engage 🔄
+## Slice 2 — Browse + Manage + Engage ✅
 
 Find, edit, react to and comment on saved listings.
 
@@ -61,7 +61,7 @@ Find, edit, react to and comment on saved listings.
 - ✅ `comments` + `reactions` tables (schema in place)
 - ✅ Comments UI on detail page — post + thread, author avatar/name from Clerk, owner-only delete
 - ✅ Reactions UI on detail page — fixed emoji set (❤️ 👍 🔥 😍 🤔 👎), click to toggle, count + your-own-reaction highlighted
-- 📋 Home-page map — center on a user-configured "current home" address (geocoded once, lat/lng stored), pin every saved listing, auto-fit bounds. Includes a settings flow to set/edit the home address.
+- ✅ Home-page map — OpenStreetMap + Leaflet (provider-pluggable: swap `home-map.tsx` to load a different impl to switch to Mapbox or Google later). User home address geocoded via Nominatim, stored as lat/lng in `user_settings`. Map auto-fits to home + every listing's pin; click a listing pin to open its detail page.
 
 ## Slice 3 — Access control 📋
 

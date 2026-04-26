@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { desc, eq } from "drizzle-orm";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
 import { listingPhotos, listings } from "@/db/schema";
 import type { Listing } from "@/db/schema";
 import { urlFor } from "@/lib/storage/r2";
 import { VIEW_MODE_COOKIE, type ViewMode } from "@/lib/view-mode";
+import { getUserHome } from "@/lib/user-settings";
 import { ViewModeToggle } from "@/components/view-mode-toggle";
 import { ListingListRow } from "@/components/listing-list-row";
+import { HomeMap, type HomeMapProps } from "@/components/home-map";
+import { HomeSettingsForm } from "@/components/home-settings-form";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,13 +30,40 @@ async function getViewMode(): Promise<ViewMode> {
   return c.get(VIEW_MODE_COOKIE)?.value === "list" ? "list" : "cards";
 }
 
+function buildMapData(
+  home: { homeLat: string | null; homeLng: string | null; homeAddress: string | null } | null,
+  rows: Listing[],
+): HomeMapProps {
+  const homePin =
+    home?.homeLat && home.homeLng && home.homeAddress
+      ? {
+          lat: parseFloat(home.homeLat),
+          lng: parseFloat(home.homeLng),
+          label: home.homeAddress,
+        }
+      : null;
+
+  const pins = rows
+    .filter((l) => l.latitude && l.longitude)
+    .map((l) => ({
+      id: l.id,
+      lat: parseFloat(l.latitude as string),
+      lng: parseFloat(l.longitude as string),
+      label: l.address ?? l.title ?? "Listing",
+      href: `/listings/${l.id}`,
+    }));
+
+  return { home: homePin, pins };
+}
+
 export default async function HomePage() {
+  const { userId } = await auth();
   const viewMode = await getViewMode();
 
-  const allListings = await db
-    .select()
-    .from(listings)
-    .orderBy(desc(listings.createdAt));
+  const [allListings, userHome] = await Promise.all([
+    db.select().from(listings).orderBy(desc(listings.createdAt)),
+    userId ? getUserHome(userId) : Promise.resolve(null),
+  ]);
 
   const coverRows =
     allListings.length === 0
@@ -56,8 +87,18 @@ export default async function HomePage() {
     })),
   );
 
+  const mapData = buildMapData(userHome, allListings);
+
   return (
     <main className="flex-1 max-w-5xl mx-auto p-8 w-full">
+      <section className="mb-8">
+        <HomeSettingsForm
+          key={userHome?.homeAddress ?? "no-home"}
+          currentAddress={userHome?.homeAddress ?? null}
+        />
+        <HomeMap home={mapData.home} pins={mapData.pins} />
+      </section>
+
       <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <h1 className="text-2xl font-semibold">Listings</h1>
         <div className="flex items-center gap-3">

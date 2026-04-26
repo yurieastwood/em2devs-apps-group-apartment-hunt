@@ -110,6 +110,19 @@ export const reactions = pgTable(
   }),
 );
 
+export const userSettings = pgTable("user_settings", {
+  clerkUserId: text("clerk_user_id").primaryKey(),
+  homeAddress: text("home_address"),
+  homeLat: numeric("home_lat", { precision: 9, scale: 6 }),
+  homeLng: numeric("home_lng", { precision: 9, scale: 6 }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export type Listing = typeof listings.$inferSelect;
 export type NewListing = typeof listings.$inferInsert;
 export type ListingPhoto = typeof listingPhotos.$inferSelect;
@@ -118,3 +131,5 @@ export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;
 export type Reaction = typeof reactions.$inferSelect;
 export type NewReaction = typeof reactions.$inferInsert;
+export type UserSettings = typeof userSettings.$inferSelect;
+export type NewUserSettings = typeof userSettings.$inferInsert;
