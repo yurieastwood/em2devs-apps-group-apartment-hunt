@@ -12,7 +12,7 @@ export type ListingListRowProps = {
   bedrooms: string | null;
   bathrooms: string | null;
   priceUsd: number | null;
-  bestPkRating?: number | null;
+  nearestPkRating?: number | null;
   coverUrl: string | null;
   isOwner?: boolean;
 };
@@ -23,7 +23,7 @@ export function ListingListRow({
   bedrooms,
   bathrooms,
   priceUsd,
-  bestPkRating,
+  nearestPkRating,
   coverUrl,
   isOwner,
 }: ListingListRowProps) {
@@ -47,9 +47,9 @@ export function ListingListRow({
                 ${priceUsd.toLocaleString("en-US")}/mo
               </span>
             ) : null}
-            {bestPkRating != null ? (
-              <span title="Best nearby PK school rating">
-                🏫 {bestPkRating}/10
+            {nearestPkRating != null ? (
+              <span title="Nearest PK school rating">
+                🏫 {nearestPkRating}/10
               </span>
             ) : null}
           </p>

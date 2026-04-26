@@ -54,18 +54,45 @@ function buildMapData(
   return { home: homePin, pins };
 }
 
-function buildBestPkRatingMap(
-  schoolRows: { listingId: string; gradeRange: string | null; rating: number | null }[],
+// Per listing, find the nearest school whose grade range covers PK and
+// return its GreatSchools rating. Ties broken by the school's stored
+// sort_order (parsers preserve source-page order, which is itself a
+// distance-ordered list for sites that don't expose a numeric distance).
+function buildNearestPkRatingMap(
+  schoolRows: {
+    listingId: string;
+    gradeRange: string | null;
+    rating: number | null;
+    distanceMiles: string | null;
+    sortOrder: number;
+  }[],
 ): Map<string, number> {
-  const best = new Map<string, number>();
+  type Entry = { distance: number; sortOrder: number; rating: number };
+  const closest = new Map<string, Entry>();
   for (const s of schoolRows) {
     if (s.rating == null) continue;
     if (!s.gradeRange) continue;
     if (!s.gradeRange.toUpperCase().startsWith("PK")) continue;
-    const cur = best.get(s.listingId);
-    if (cur == null || s.rating > cur) best.set(s.listingId, s.rating);
+    const parsed = s.distanceMiles ? parseFloat(s.distanceMiles) : NaN;
+    const distance = Number.isFinite(parsed)
+      ? parsed
+      : Number.POSITIVE_INFINITY;
+    const cur = closest.get(s.listingId);
+    if (
+      !cur ||
+      distance < cur.distance ||
+      (distance === cur.distance && s.sortOrder < cur.sortOrder)
+    ) {
+      closest.set(s.listingId, {
+        distance,
+        sortOrder: s.sortOrder,
+        rating: s.rating,
+      });
+    }
   }
-  return best;
+  const out = new Map<string, number>();
+  for (const [listingId, entry] of closest) out.set(listingId, entry.rating);
+  return out;
 }
 
 export default async function HomePage() {
@@ -95,13 +122,15 @@ export default async function HomePage() {
               listingId: listingSchools.listingId,
               gradeRange: listingSchools.gradeRange,
               rating: listingSchools.rating,
+              distanceMiles: listingSchools.distanceMiles,
+              sortOrder: listingSchools.sortOrder,
             })
             .from(listingSchools)
             .where(inArray(listingSchools.listingId, ids)),
         ]);
 
   const coverMap = new Map(coverRows.map((r) => [r.listingId, r.r2Key]));
-  const bestPkRatingMap = buildBestPkRatingMap(schoolRows);
+  const nearestPkRatingMap = buildNearestPkRatingMap(schoolRows);
 
   const items: HomeListingItem[] = await Promise.all(
     allListings.map(async (l) => ({
@@ -111,7 +140,7 @@ export default async function HomePage() {
       bedrooms: l.bedrooms,
       bathrooms: l.bathrooms,
       priceUsd: l.priceUsd,
-      bestPkRating: bestPkRatingMap.get(l.id) ?? null,
+      nearestPkRating: nearestPkRatingMap.get(l.id) ?? null,
       coverUrl: coverMap.has(l.id)
         ? await urlFor(coverMap.get(l.id) as string)
         : null,

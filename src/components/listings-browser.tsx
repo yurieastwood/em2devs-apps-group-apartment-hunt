@@ -12,7 +12,7 @@ export type HomeListingItem = {
   bedrooms: string | null;
   bathrooms: string | null;
   priceUsd: number | null;
-  bestPkRating: number | null;
+  nearestPkRating: number | null;
   coverUrl: string | null;
   isOwner: boolean;
   createdAt: string;
@@ -75,7 +75,7 @@ export function ListingsBrowser({
         if (l.priceUsd == null || l.priceUsd > maxPrice) return false;
       }
       if (minPkRating > 0) {
-        if (l.bestPkRating == null || l.bestPkRating < minPkRating) {
+        if (l.nearestPkRating == null || l.nearestPkRating < minPkRating) {
           return false;
         }
       }
@@ -96,7 +96,7 @@ export function ListingsBrowser({
         (asNum(b.bedrooms) ?? -1) - (asNum(a.bedrooms) ?? -1),
       "baths-desc": (a, b) =>
         (asNum(b.bathrooms) ?? -1) - (asNum(a.bathrooms) ?? -1),
-      "rating-desc": (a, b) => (b.bestPkRating ?? -1) - (a.bestPkRating ?? -1),
+      "rating-desc": (a, b) => (b.nearestPkRating ?? -1) - (a.nearestPkRating ?? -1),
     };
     return [...filtered].sort(sorter[sort]);
   }, [listings, sort, minBeds, minBaths, maxPrice, minPkRating]);
@@ -117,7 +117,7 @@ export function ListingsBrowser({
             <option value="price-desc">Price (high → low)</option>
             <option value="beds-desc">Most bedrooms</option>
             <option value="baths-desc">Most bathrooms</option>
-            <option value="rating-desc">Best PK school</option>
+            <option value="rating-desc">Nearest PK rating (high → low)</option>
           </select>
         </label>
         <ThresholdGroup
@@ -196,9 +196,9 @@ function CardsView({ listings }: { listings: HomeListingItem[] }) {
                     {fmtPrice(l.priceUsd)}
                   </span>
                 ) : null}
-                {l.bestPkRating != null ? (
-                  <span title="Best nearby PK school rating">
-                    🏫 {l.bestPkRating}/10
+                {l.nearestPkRating != null ? (
+                  <span title="Nearest PK school rating">
+                    🏫 {l.nearestPkRating}/10
                   </span>
                 ) : null}
               </p>
@@ -230,7 +230,7 @@ function ListView({ listings }: { listings: HomeListingItem[] }) {
           bedrooms={l.bedrooms}
           bathrooms={l.bathrooms}
           priceUsd={l.priceUsd}
-          bestPkRating={l.bestPkRating}
+          nearestPkRating={l.nearestPkRating}
           coverUrl={l.coverUrl}
           isOwner={l.isOwner}
         />
