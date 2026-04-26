@@ -63,6 +63,12 @@ Find, edit, react to and comment on saved listings.
 - ✅ Reactions UI on detail page — fixed emoji set (❤️ 👍 🔥 😍 🤔 👎), click to toggle, count + your-own-reaction highlighted
 - ✅ Home-page map — OpenStreetMap + Leaflet (provider-pluggable: swap `home-map.tsx` to load a different impl to switch to Mapbox or Google later). User home address geocoded via Nominatim, stored as lat/lng in `user_settings`. Map auto-fits to home + every listing's pin; click a listing pin to open its detail page.
 
+## Slice 2.5 — Bulk import ✅
+
+Quality-of-life addition between major slices.
+
+- ✅ `/listings/import` — paste URLs (plain text or HTML with anchors); Zillow / Apartments.com URLs are auto-extracted (regex match + URL parse + supported-host filter, deduped). Client iterates the list calling `importListingAction` per URL, showing per-row status (pending → processing → done/failed). Reuses `createListingFromUrl` end-to-end so dedup, parsing, and photo rehosting work the same as single-add.
+
 ## Slice 3 — Access control 📋
 
 Invite-only, family-scoped access.
