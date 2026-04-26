@@ -4,6 +4,14 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { DeleteListingButton } from "@/components/delete-listing-button";
 import { ListingListRow } from "@/components/listing-list-row";
+import { fmtTransitDuration } from "@/lib/transit-format";
+
+export type HomePoiDistance = {
+  poiId: string;
+  label: string;
+  durationSeconds: number | null;
+  distanceMeters: number | null;
+};
 
 export type HomeListingItem = {
   id: string;
@@ -17,6 +25,7 @@ export type HomeListingItem = {
   coverUrl: string | null;
   isOwner: boolean;
   createdAt: string;
+  poiDistances: HomePoiDistance[];
 };
 
 type SortOption =
@@ -206,6 +215,16 @@ function CardsView({ listings }: { listings: HomeListingItem[] }) {
                   </span>
                 ) : null}
               </p>
+              {l.poiDistances.length > 0 ? (
+                <p className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                  {l.poiDistances.map((d) => (
+                    <span key={d.poiId}>
+                      🚌 {d.label}:{" "}
+                      {fmtTransitDuration(d.durationSeconds) ?? "—"}
+                    </span>
+                  ))}
+                </p>
+              ) : null}
             </div>
           </Link>
           {l.isOwner ? (
@@ -238,6 +257,7 @@ function ListView({ listings }: { listings: HomeListingItem[] }) {
           nearestPkRating={l.nearestPkRating}
           coverUrl={l.coverUrl}
           isOwner={l.isOwner}
+          poiDistances={l.poiDistances}
         />
       ))}
     </ul>

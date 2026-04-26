@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
-import { listingPhotos, listingSchools, listings } from "@/db/schema";
+import {
+  listingPhotos,
+  listingPoiDistances,
+  listingSchools,
+  listings,
+} from "@/db/schema";
 import type { Listing } from "@/db/schema";
 import { urlFor } from "@/lib/storage/r2";
 import { VIEW_MODE_COOKIE, type ViewMode } from "@/lib/view-mode";
@@ -109,9 +114,9 @@ export default async function HomePage() {
 
   const ids = allListings.map((l) => l.id);
 
-  const [coverRows, schoolRows] =
+  const [coverRows, schoolRows, distanceRows] =
     ids.length === 0
-      ? [[], []]
+      ? [[], [], []]
       : await Promise.all([
           db
             .select({
@@ -130,10 +135,50 @@ export default async function HomePage() {
             })
             .from(listingSchools)
             .where(inArray(listingSchools.listingId, ids)),
+          userPois.length > 0
+            ? db
+                .select({
+                  listingId: listingPoiDistances.listingId,
+                  poiId: listingPoiDistances.poiId,
+                  durationSeconds: listingPoiDistances.durationSeconds,
+                  distanceMeters: listingPoiDistances.distanceMeters,
+                })
+                .from(listingPoiDistances)
+                .where(
+                  and(
+                    inArray(listingPoiDistances.listingId, ids),
+                    inArray(
+                      listingPoiDistances.poiId,
+                      userPois.map((p) => p.id),
+                    ),
+                  ),
+                )
+            : Promise.resolve([]),
         ]);
 
   const coverMap = new Map(coverRows.map((r) => [r.listingId, r.r2Key]));
   const nearestPkRatingMap = buildNearestPkRatingMap(schoolRows);
+
+  const poiLabelMap = new Map(userPois.map((p) => [p.id, p.label]));
+  const distMap = new Map<
+    string,
+    Array<{
+      poiId: string;
+      label: string;
+      durationSeconds: number | null;
+      distanceMeters: number | null;
+    }>
+  >();
+  for (const r of distanceRows) {
+    const arr = distMap.get(r.listingId) ?? [];
+    arr.push({
+      poiId: r.poiId,
+      label: poiLabelMap.get(r.poiId) ?? "POI",
+      durationSeconds: r.durationSeconds,
+      distanceMeters: r.distanceMeters,
+    });
+    distMap.set(r.listingId, arr);
+  }
 
   const items: HomeListingItem[] = await Promise.all(
     allListings.map(async (l) => ({
@@ -145,6 +190,7 @@ export default async function HomePage() {
       squareFeet: l.squareFeet,
       priceUsd: l.priceUsd,
       nearestPkRating: nearestPkRatingMap.get(l.id) ?? null,
+      poiDistances: distMap.get(l.id) ?? [],
       coverUrl: coverMap.has(l.id)
         ? await urlFor(coverMap.get(l.id) as string)
         : null,

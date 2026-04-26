@@ -5,6 +5,14 @@ import Link from "next/link";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { DeleteListingButton } from "./delete-listing-button";
+import { fmtTransitDuration } from "@/lib/transit-format";
+
+export type ListingListRowPoi = {
+  poiId: string;
+  label: string;
+  durationSeconds: number | null;
+  distanceMeters: number | null;
+};
 
 export type ListingListRowProps = {
   listingId: string;
@@ -16,6 +24,7 @@ export type ListingListRowProps = {
   nearestPkRating?: number | null;
   coverUrl: string | null;
   isOwner?: boolean;
+  poiDistances?: ListingListRowPoi[];
 };
 
 export function ListingListRow({
@@ -28,6 +37,7 @@ export function ListingListRow({
   nearestPkRating,
   coverUrl,
   isOwner,
+  poiDistances,
 }: ListingListRowProps) {
   const [open, setOpen] = useState(false);
 
@@ -58,6 +68,15 @@ export function ListingListRow({
               </span>
             ) : null}
           </p>
+          {poiDistances && poiDistances.length > 0 ? (
+            <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+              {poiDistances.map((d) => (
+                <span key={d.poiId}>
+                  🚌 {d.label}: {fmtTransitDuration(d.durationSeconds) ?? "—"}
+                </span>
+              ))}
+            </p>
+          ) : null}
         </div>
         <div className="flex items-center gap-3 shrink-0">
           {coverUrl ? (

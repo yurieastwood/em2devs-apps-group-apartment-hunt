@@ -10,6 +10,7 @@ import { DeleteListingButton } from "@/components/delete-listing-button";
 import { CommentsSection } from "./comments-section";
 import { ReactionsBar } from "./reactions-bar";
 import { NearbySchools } from "./nearby-schools";
+import { ListingPoiDistances } from "@/components/listing-poi-distances";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -144,6 +145,8 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
       <div className="mt-6">
         <ReactionsBar listingId={listing.id} />
       </div>
+
+      <ListingPoiDistances listingId={listing.id} />
 
       <NearbySchools listingId={listing.id} />
 

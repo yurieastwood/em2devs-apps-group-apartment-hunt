@@ -80,6 +80,16 @@ Lock down the diagnostic so it's not a free public scraping endpoint.
 
 - ✅ `/api/health/scrape` accepts either a signed-in Clerk session OR an `Authorization: Bearer <HEALTH_AUTH_TOKEN>` header. Anything else returns `401` with `WWW-Authenticate: Bearer realm="health"`. Constant-time comparison (`crypto.timingSafeEqual`) on the token. The route stays in the public middleware matcher so the Bearer path can reach the handler; auth happens inside the handler.
 
+## Slice 2.7 — Points of interest with transit distances ✅
+
+Per-user POIs (Work, school, family) with transit-based distance to every listing.
+
+- ✅ Schema: `points_of_interest` (per-user, label + address + lat/lng) and `listing_poi_distances` (cached transit duration + distance per (listing, poi)).
+- ✅ POI CRUD UI in the home-page settings area: list, add, inline edit, delete. Address geocoded via Nominatim (same as home address) and stored as lat/lng.
+- ✅ Map markers: green AdvancedMarker Pin per POI, alongside the 🏠 home marker and blue listing pins. Auto-fit bounds include POI positions. InfoWindow on click.
+- ✅ Google Distance Matrix integration (server-side, mode=transit, `departure_time=now`). Separate `GOOGLE_MAPS_SERVER_KEY` env var (the public Maps JS key won't work server-to-server because of HTTP-referrer restrictions). Eager compute on POI add (POI × all listings) and on listing add (new listing × all POIs); results cached in `listing_poi_distances` so subsequent renders don't pay the API cost.
+- ✅ Display: home cards/rows show "🚌 Work: 25 min" per POI under the BR/BA/price line; listing detail page renders a "Transit times" section listing each POI with duration + miles. Pure formatters in `src/lib/transit-format.ts` so server and client components can share them.
+
 ## Slice 3 — Access control 📋
 
 Invite-only, family-scoped access.
