@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { addPoiAction, type PoiState } from "@/lib/poi-actions";
+import { PoiColorPicker } from "./poi-color-picker";
 
 const initial: PoiState = { kind: "idle" };
 
@@ -46,6 +47,7 @@ export function AddPoiForm() {
           className="border border-border bg-input-background text-foreground rounded p-2 text-sm placeholder:text-muted-foreground"
         />
       </div>
+      <PoiColorPicker />
       <div className="flex items-center gap-3">
         <SubmitButton />
         <button

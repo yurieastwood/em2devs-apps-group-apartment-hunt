@@ -234,6 +234,7 @@ export default async function HomePage() {
     lng: parseFloat(p.lng),
     label: p.label,
     address: p.address,
+    color: p.color,
   }));
 
   return (

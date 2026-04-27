@@ -3,6 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { isOrgAdmin } from "@/lib/auth/roles";
+import { isValidPoiColorName } from "./poi-pin-color";
 import { geocodeAddress } from "./geocode";
 import { deletePoiById, insertPoi, updatePoi } from "./points-of-interest";
 import {
@@ -19,6 +20,12 @@ export type PoiState =
 function readField(formData: FormData, name: string): string {
   const v = formData.get(name);
   return typeof v === "string" ? v.trim() : "";
+}
+
+function readPoiColor(formData: FormData): string | null {
+  const raw = readField(formData, "color");
+  if (!raw) return null;
+  return isValidPoiColorName(raw) ? raw : null;
 }
 
 export async function addPoiAction(
@@ -51,6 +58,7 @@ export async function addPoiAction(
       address: geo.displayName,
       lat: geo.lat,
       lng: geo.lng,
+      color: readPoiColor(formData),
     },
   );
 
@@ -95,6 +103,7 @@ export async function updatePoiAction(
       address: geo.displayName,
       lat: geo.lat,
       lng: geo.lng,
+      color: readPoiColor(formData),
     },
   );
   if (!updated) return { kind: "error", message: "Couldn't update." };

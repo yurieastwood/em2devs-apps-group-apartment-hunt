@@ -7,11 +7,18 @@ import {
   type PoiState,
   updatePoiAction,
 } from "@/lib/poi-actions";
+import { poiPinColor } from "@/lib/poi-pin-color";
+import { PoiColorPicker } from "./poi-color-picker";
 
 const initial: PoiState = { kind: "idle" };
 
 type Props = {
-  poi: { id: string; label: string; address: string };
+  poi: {
+    id: string;
+    label: string;
+    address: string;
+    color: string | null;
+  };
   canEdit: boolean;
 };
 
@@ -22,8 +29,14 @@ export function PoiRow({ poi, canEdit }: Props) {
     return <EditForm poi={poi} onClose={() => setEditing(false)} />;
   }
 
+  const color = poiPinColor(poi.color);
   return (
     <div className="flex flex-wrap items-baseline gap-x-3 text-sm">
+      <span
+        aria-hidden
+        className="inline-block w-3 h-3 rounded-full self-center"
+        style={{ backgroundColor: color.background }}
+      />
       <span>
         <strong>{poi.label}:</strong>{" "}
         <span className="text-muted-foreground">{poi.address}</span>
@@ -77,6 +90,7 @@ function EditForm({
           className="border border-border bg-input-background text-foreground rounded p-2 text-sm"
         />
       </div>
+      <PoiColorPicker defaultValue={poi.color} />
       <div className="flex items-center gap-3">
         <SaveButton />
         <button

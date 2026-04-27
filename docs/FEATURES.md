@@ -89,6 +89,17 @@ Family-scoped visibility via Clerk Organizations.
 
 Still planned: a backfill UI for moving pre-orgs personal listings into an active org (today the user runs SQL); disabling public sign-up in Clerk so only invited members can join.
 
+## Slice 3.7 — Customizable POI pin colors
+
+Per-POI pin color pickable from a fixed palette, rendered via Google's `<Pin>` so it stays pixel-identical across platforms.
+
+- **Schema**: `points_of_interest.color` (text, nullable). Null = default green so legacy rows render unchanged.
+- **Palette** (`src/lib/poi-pin-color.ts`): 8 named colors (green, blue, red, amber, purple, pink, teal, gray), each with `background` / `border` / `glyph` hex codes that feed Google's Pin props directly. `poiPinColor(name)` looks up by name with a green fallback; `isValidPoiColorName(name)` is used by the action layer to whitelist input.
+- **Form**: shared `<PoiColorPicker>` client component renders 8 round swatches with a hidden `name="color"` input. Selection scales the swatch and outlines it. Used by both the Add POI form and the inline edit form on each POI row.
+- **Actions**: `addPoiAction` and `updatePoiAction` read `color` via a `readPoiColor` helper that validates against the palette before persisting; unknown values become null.
+- **Map** (`home-map-google.tsx`): `<PoiMarker>` resolves the color via `poiPinColor()` and passes `background` / `borderColor` / `glyphColor` to `<Pin>`. Same component is reused on the listing detail page.
+- **Inline display**: each POI row in the home settings shows a small filled circle in the chosen color before the label, so the picker's effect is visible without scrolling to the map.
+
 ## Slice 3.6 — Role-based access (admins vs members)
 
 Two-tier permissions on top of Clerk Organizations. The org creator is `org:admin` automatically; invitees default to `org:member`. Roles are managed from Clerk's `<OrganizationProfile />` UI (no extra UI built here).

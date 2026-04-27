@@ -23,9 +23,17 @@ export async function getPois(scope: Scope): Promise<PointOfInterest[]> {
     .orderBy(asc(pointsOfInterest.createdAt));
 }
 
+export type PoiInput = {
+  label: string;
+  address: string;
+  lat: number;
+  lng: number;
+  color: string | null;
+};
+
 export async function insertPoi(
   scope: Scope,
-  values: { label: string; address: string; lat: number; lng: number },
+  values: PoiInput,
 ): Promise<{ id: string }> {
   const [inserted] = await db
     .insert(pointsOfInterest)
@@ -34,6 +42,7 @@ export async function insertPoi(
       orgId: scope.orgId ?? null,
       label: values.label,
       address: values.address,
+      color: values.color,
       lat: values.lat.toString(),
       lng: values.lng.toString(),
     })
@@ -44,13 +53,14 @@ export async function insertPoi(
 export async function updatePoi(
   scope: Scope,
   poiId: string,
-  values: { label: string; address: string; lat: number; lng: number },
+  values: PoiInput,
 ): Promise<{ id: string } | null> {
   const [updated] = await db
     .update(pointsOfInterest)
     .set({
       label: values.label,
       address: values.address,
+      color: values.color,
       lat: values.lat.toString(),
       lng: values.lng.toString(),
       updatedAt: new Date(),

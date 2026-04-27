@@ -226,6 +226,7 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
               lng: parseFloat(p.lng),
               label: p.label,
               address: p.address,
+              color: p.color,
             }))}
           />
         </section>

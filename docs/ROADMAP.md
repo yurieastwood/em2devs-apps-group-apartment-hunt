@@ -73,6 +73,10 @@ Daily cron and on-demand re-scraping of every listing. Tracks price and availabi
 
 Clerk Organization roles gate write features. Admins can add/edit/delete listings, manage home address and POIs, refresh all listings, and invite members. Members can browse, comment, react, re-prioritize, refresh a single listing, and delete their own listings/comments.
 
+## Slice 3.7 — Customizable POI pin colors ✅
+
+Each POI can pick a pin color from an 8-color palette on its add/edit form. Maps render the chosen color via Google's `<Pin background>`, so it stays cross-platform consistent. Existing POIs default to green (the previous look).
+
 ---
 
 ## Backlog 💡

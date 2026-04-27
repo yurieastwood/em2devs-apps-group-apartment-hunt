@@ -9,6 +9,7 @@ import {
   Pin,
   useMap,
 } from "@vis.gl/react-google-maps";
+import { poiPinColor } from "@/lib/poi-pin-color";
 
 export type HomeMapPin = {
   id: string;
@@ -24,6 +25,7 @@ export type HomeMapPoi = {
   lng: number;
   label: string;
   address?: string;
+  color?: string | null;
 };
 
 export type HomeMapGoogleProps = {
@@ -126,12 +128,17 @@ function HomeMarker({
 
 function PoiMarker({ poi }: { poi: HomeMapPoi }) {
   const [open, setOpen] = useState(false);
+  const color = poiPinColor(poi.color);
   return (
     <AdvancedMarker
       position={{ lat: poi.lat, lng: poi.lng }}
       onClick={() => setOpen((v) => !v)}
     >
-      <Pin background="#16a34a" borderColor="#15803d" glyphColor="#ffffff" />
+      <Pin
+        background={color.background}
+        borderColor={color.border}
+        glyphColor={color.glyph}
+      />
       {open ? (
         <InfoWindow
           position={{ lat: poi.lat, lng: poi.lng }}

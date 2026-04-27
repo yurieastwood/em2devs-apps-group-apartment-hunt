@@ -222,6 +222,7 @@ export const pointsOfInterest = pgTable(
     orgId: text("org_id"),
     label: text("label").notNull(),
     address: text("address").notNull(),
+    color: text("color"),
     lat: numeric("lat", { precision: 9, scale: 6 }).notNull(),
     lng: numeric("lng", { precision: 9, scale: 6 }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })

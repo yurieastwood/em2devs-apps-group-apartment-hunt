@@ -24,6 +24,7 @@ export async function PoisSection({ canEdit }: { canEdit: boolean }) {
                   id: poi.id,
                   label: poi.label,
                   address: poi.address,
+                  color: poi.color,
                 }}
                 canEdit={canEdit}
               />
