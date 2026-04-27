@@ -89,6 +89,22 @@ Family-scoped visibility via Clerk Organizations.
 
 Still planned: a backfill UI for moving pre-orgs personal listings into an active org (today the user runs SQL); disabling public sign-up in Clerk so only invited members can join.
 
+## Slice 3.3 — Listing priority
+
+A contiguous 1..N priority within each scope (org or personal). Anyone in the family can change it; setting one slot shifts the others to keep the sequence packed.
+
+- **Schema**: nullable `priority` integer column on `listings`. NULL = unprioritized; existing rows on push stay NULL.
+- **Reorder logic** (`src/lib/listings/priority.ts`):
+  - `null → P`: shift everything `>= P` up by one, then set the target.
+  - `P → null`: shift everything `> P` down by one, then null the target.
+  - `P_old → P_new` (smaller): shift the range `[P_new, P_old)` up by one.
+  - `P_old → P_new` (larger): shift the range `(P_old, P_new]` down by one.
+  - Validates `P` is in `[1, prioritizedCount + (1 if adding else 0)]` before any write.
+- **Delete cleanup**: `shiftPrioritiesAfterDelete` reduces every priority `>` the removed slot, called from `deleteListingAction` after a successful delete.
+- **Action**: `setListingPriorityAction(listingId, newPriority | null)` reads scope from `auth()`, calls the lib, revalidates `/` and `/listings/[id]`. Anyone in the family can call it (no owner check).
+- **UI**: a single `<PriorityEditor>` client component is the editor and the display. Inline number input (with "P" prefix) on home cards, list rows, and the detail page header. Empty value clears the priority. Parent re-keys the editor on `(listingId, priority)` so a server-side reorder forces a fresh `useState` init when the row's priority changes.
+- **Sort**: new "Priority" option in the home-page sort dropdown, set as the default. Listings without a priority sort last (tied items break by `createdAt` newest-first).
+
 ## Slice 3.2 — Detail-page map
 
 Reuses the home-page `<HomeMap>` component on `/listings/[id]`.

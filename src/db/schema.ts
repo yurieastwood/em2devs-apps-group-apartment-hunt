@@ -32,6 +32,7 @@ export const listings = pgTable(
     bathrooms: numeric("bathrooms", { precision: 4, scale: 1 }),
     squareFeet: integer("square_feet"),
     priceUsd: integer("price_usd"),
+    priority: integer("priority"),
     description: text("description"),
     raw: jsonb("raw"),
     createdAt: timestamp("created_at", { withTimezone: true })

@@ -12,6 +12,7 @@ import {
 } from "@/db/schema";
 import { deleteObjects } from "@/lib/storage/r2";
 import { listingScope, userCanAccessListing } from "@/lib/listings/access";
+import { shiftPrioritiesAfterDelete } from "@/lib/listings/priority";
 
 async function getAccessibleListing(
   listingId: string,
@@ -50,11 +51,13 @@ export async function deleteListingAction(listingId: string): Promise<void> {
   const result = await db
     .delete(listings)
     .where(and(eq(listings.id, listingId), scope))
-    .returning({ id: listings.id });
+    .returning({ id: listings.id, priority: listings.priority });
 
   if (result.length === 0) {
     return;
   }
+
+  await shiftPrioritiesAfterDelete({ userId, orgId }, result[0].priority);
 
   if (photos.length > 0) {
     try {

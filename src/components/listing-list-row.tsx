@@ -5,6 +5,7 @@ import Link from "next/link";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { DeleteListingButton } from "./delete-listing-button";
+import { PriorityEditor } from "./priority-editor";
 import { fmtTransitDuration } from "@/lib/transit-format";
 import { labelChipClasses } from "@/lib/label-color";
 
@@ -33,6 +34,7 @@ export type ListingListRowProps = {
   isOwner?: boolean;
   poiDistances?: ListingListRowPoi[];
   labels?: ListingListRowLabel[];
+  priority?: number | null;
 };
 
 export function ListingListRow({
@@ -47,6 +49,7 @@ export function ListingListRow({
   isOwner,
   poiDistances,
   labels,
+  priority,
 }: ListingListRowProps) {
   const [open, setOpen] = useState(false);
 
@@ -100,6 +103,11 @@ export function ListingListRow({
           ) : null}
         </div>
         <div className="flex items-center gap-3 shrink-0">
+          <PriorityEditor
+            key={`pri-${listingId}-${priority ?? "null"}`}
+            listingId={listingId}
+            current={priority ?? null}
+          />
           {coverUrl ? (
             <button
               type="button"

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { DeleteListingButton } from "@/components/delete-listing-button";
 import { ListingListRow } from "@/components/listing-list-row";
+import { PriorityEditor } from "@/components/priority-editor";
 import { fmtTransitDuration } from "@/lib/transit-format";
 import { labelChipClasses } from "@/lib/label-color";
 
@@ -28,6 +29,7 @@ export type HomeListingItem = {
   bathrooms: string | null;
   squareFeet: number | null;
   priceUsd: number | null;
+  priority: number | null;
   nearestPkRating: number | null;
   coverUrl: string | null;
   isOwner: boolean;
@@ -37,6 +39,7 @@ export type HomeListingItem = {
 };
 
 type SortOption =
+  | "priority"
   | "newest"
   | "oldest"
   | "price-asc"
@@ -75,7 +78,7 @@ export function ListingsBrowser({
   viewMode: "cards" | "list";
   scopeLabels: HomeLabel[];
 }) {
-  const [sort, setSort] = useState<SortOption>("newest");
+  const [sort, setSort] = useState<SortOption>("priority");
   const [minBeds, setMinBeds] = useState(0);
   const [minBaths, setMinBaths] = useState(0);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
@@ -111,6 +114,12 @@ export function ListingsBrowser({
       SortOption,
       (a: HomeListingItem, b: HomeListingItem) => number
     > = {
+      priority: (a, b) => {
+        const pa = a.priority ?? Number.POSITIVE_INFINITY;
+        const pb = b.priority ?? Number.POSITIVE_INFINITY;
+        if (pa !== pb) return pa - pb;
+        return b.createdAt.localeCompare(a.createdAt);
+      },
       newest: (a, b) => b.createdAt.localeCompare(a.createdAt),
       oldest: (a, b) => a.createdAt.localeCompare(b.createdAt),
       "price-asc": (a, b) =>
@@ -145,6 +154,7 @@ export function ListingsBrowser({
             onChange={(e) => setSort(e.target.value as SortOption)}
             className="border border-border bg-input-background text-foreground rounded px-2 py-1"
           >
+            <option value="priority">Priority</option>
             <option value="newest">Newest</option>
             <option value="oldest">Oldest</option>
             <option value="price-asc">Price (low → high)</option>
@@ -309,15 +319,20 @@ function CardsView({ listings }: { listings: HomeListingItem[] }) {
               <LabelChips labels={l.labels} />
             </div>
           </Link>
-          {l.isOwner ? (
-            <div className="px-4 pb-3">
+          <div className="px-4 pb-3 flex items-center justify-between gap-3">
+            <PriorityEditor
+              key={`pri-${l.id}-${l.priority ?? "null"}`}
+              listingId={l.id}
+              current={l.priority}
+            />
+            {l.isOwner ? (
               <DeleteListingButton
                 listingId={l.id}
                 label="Delete"
                 className="text-xs text-muted-foreground hover:text-destructive disabled:opacity-60"
               />
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </li>
       ))}
     </ul>
@@ -341,6 +356,7 @@ function ListView({ listings }: { listings: HomeListingItem[] }) {
           isOwner={l.isOwner}
           poiDistances={l.poiDistances}
           labels={l.labels}
+          priority={l.priority}
         />
       ))}
     </ul>

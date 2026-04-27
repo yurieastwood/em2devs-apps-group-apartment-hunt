@@ -12,6 +12,7 @@ import { ReactionsBar } from "./reactions-bar";
 import { NearbySchools } from "./nearby-schools";
 import { ListingPoiDistances } from "@/components/listing-poi-distances";
 import { HomeMap } from "@/components/home-map";
+import { PriorityEditor } from "@/components/priority-editor";
 import { getPois } from "@/lib/points-of-interest";
 
 import { ListingLabelsSection } from "@/components/listing-labels";
@@ -88,6 +89,14 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
         {listing.address && listing.address !== listing.title ? (
           <p className="text-muted-foreground">{listing.address}</p>
         ) : null}
+        <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Priority</span>
+          <PriorityEditor
+            key={`pri-${listing.id}-${listing.priority ?? "null"}`}
+            listingId={listing.id}
+            current={listing.priority}
+          />
+        </div>
       </header>
 
       <ul className="flex flex-wrap gap-x-6 gap-y-2 mb-6 text-sm text-muted-foreground">

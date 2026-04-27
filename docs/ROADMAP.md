@@ -57,6 +57,10 @@ User-defined labels for organizing the hunt — chips on cards and a filter on t
 
 Listing detail page renders a map with the listing's pin and every POI in the family, just before the comments section.
 
+## Slice 3.3 — Listing priority ✅
+
+Per-listing priority number, contiguous 1..N within the family. Anyone can re-prioritize from the cards, list rows, or detail page; the home page sorts by priority by default.
+
 ---
 
 ## Backlog 💡
@@ -66,7 +70,6 @@ Grouped by priority. Add new items under whichever group fits.
 ### High — meaningful gaps for daily use
 
 - Advanced/Complex sorting; sort by multiple fields simultaneously, each adding on the sorting priority.
-- Priority number field for each listing; user will decide how important that listing is, and when that value change everything has to be reordered to avoid duplicate priorities.
 - Email notifications when a family member adds a listing or comments
 - Manual entry (no source URL) for sites we don't parse
 - Bulk-apply labels (select many → apply one)

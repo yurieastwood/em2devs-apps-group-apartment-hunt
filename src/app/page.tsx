@@ -200,6 +200,7 @@ export default async function HomePage() {
       bathrooms: l.bathrooms,
       squareFeet: l.squareFeet,
       priceUsd: l.priceUsd,
+      priority: l.priority,
       nearestPkRating: nearestPkRatingMap.get(l.id) ?? null,
       poiDistances: distMap.get(l.id) ?? [],
       labels: (labelsByListing.get(l.id) ?? []).map((lbl) => ({
