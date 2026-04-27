@@ -35,6 +35,7 @@ export type ListingListRowProps = {
   poiDistances?: ListingListRowPoi[];
   labels?: ListingListRowLabel[];
   priority?: number | null;
+  availability?: string;
 };
 
 export function ListingListRow({
@@ -50,6 +51,7 @@ export function ListingListRow({
   poiDistances,
   labels,
   priority,
+  availability,
 }: ListingListRowProps) {
   const [open, setOpen] = useState(false);
 
@@ -57,12 +59,19 @@ export function ListingListRow({
     <li>
       <div className="flex items-center gap-4 px-3 py-2 hover:bg-muted/40 transition-colors">
         <div className="flex-1 min-w-0">
-          <Link
-            href={`/listings/${listingId}`}
-            className="font-medium hover:underline block truncate"
-          >
-            {address}
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/listings/${listingId}`}
+              className="font-medium hover:underline block truncate"
+            >
+              {address}
+            </Link>
+            {availability === "unavailable" ? (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/30 text-[10px] font-medium uppercase tracking-wide shrink-0">
+                Unavailable
+              </span>
+            ) : null}
+          </div>
           <p className="text-sm text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
             {bedrooms ? <span>{bedrooms} BR</span> : null}
             {bathrooms ? <span>{bathrooms} BA</span> : null}

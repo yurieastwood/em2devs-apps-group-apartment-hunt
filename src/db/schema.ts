@@ -34,6 +34,9 @@ export const listings = pgTable(
     priceUsd: integer("price_usd"),
     priority: integer("priority"),
     description: text("description"),
+    availability: text("availability").notNull().default("unknown"),
+    lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+    lastCheckError: text("last_check_error"),
     raw: jsonb("raw"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -46,6 +49,30 @@ export const listings = pgTable(
     sourceUrlIdx: uniqueIndex("listings_source_url_idx").on(t.sourceUrl),
     ownerIdx: index("listings_owner_idx").on(t.ownerClerkUserId),
     orgIdx: index("listings_org_idx").on(t.orgId),
+  }),
+);
+
+export const listingChanges = pgTable(
+  "listing_changes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    listingId: uuid("listing_id")
+      .notNull()
+      .references(() => listings.id, { onDelete: "cascade" }),
+    field: text("field").notNull(),
+    oldValue: text("old_value"),
+    newValue: text("new_value"),
+    source: text("source").notNull(),
+    changedAt: timestamp("changed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    listingIdx: index("listing_changes_listing_idx").on(
+      t.listingId,
+      t.changedAt,
+    ),
+    changedAtIdx: index("listing_changes_changed_at_idx").on(t.changedAt),
   }),
 );
 
@@ -275,3 +302,5 @@ export type Label = typeof labels.$inferSelect;
 export type NewLabel = typeof labels.$inferInsert;
 export type ListingLabel = typeof listingLabels.$inferSelect;
 export type NewListingLabel = typeof listingLabels.$inferInsert;
+export type ListingChange = typeof listingChanges.$inferSelect;
+export type NewListingChange = typeof listingChanges.$inferInsert;

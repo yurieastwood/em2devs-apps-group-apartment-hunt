@@ -31,6 +31,7 @@ export type HomeListingItem = {
   priceUsd: number | null;
   priority: number | null;
   nearestPkRating: number | null;
+  availability: string;
   coverUrl: string | null;
   isOwner: boolean;
   createdAt: string;
@@ -157,6 +158,7 @@ export function ListingsBrowser({
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [minPkRating, setMinPkRating] = useState(0);
   const [activeLabels, setActiveLabels] = useState<Set<string>>(new Set());
+  const [hideUnavailable, setHideUnavailable] = useState(false);
 
   const visible = useMemo(() => {
     const filtered = listings.filter((l) => {
@@ -180,6 +182,7 @@ export function ListingsBrowser({
         const hit = l.labels.some((lbl) => activeLabels.has(lbl.id));
         if (!hit) return false;
       }
+      if (hideUnavailable && l.availability === "unavailable") return false;
       return true;
     });
 
@@ -188,7 +191,16 @@ export function ListingsBrowser({
     return [...filtered].sort((a, b) =>
       compareWithCriteria(effectiveCriteria, a, b),
     );
-  }, [listings, sortCriteria, minBeds, minBaths, maxPrice, minPkRating, activeLabels]);
+  }, [
+    listings,
+    sortCriteria,
+    minBeds,
+    minBaths,
+    maxPrice,
+    minPkRating,
+    activeLabels,
+    hideUnavailable,
+  ]);
 
   function toggleLabel(id: string) {
     setActiveLabels((prev) => {
@@ -271,6 +283,18 @@ export function ListingsBrowser({
             onToggle={toggleLabel}
           />
         ) : null}
+        <button
+          type="button"
+          onClick={() => setHideUnavailable((v) => !v)}
+          aria-pressed={hideUnavailable}
+          className={`px-2 py-0.5 rounded border transition-colors ${
+            hideUnavailable
+              ? "bg-primary/15 border-primary text-foreground"
+              : "border-border hover:bg-muted text-muted-foreground"
+          }`}
+        >
+          Hide unavailable
+        </button>
       </div>
 
       <p className="text-xs text-muted-foreground mb-4">
@@ -438,6 +462,15 @@ function LabelFilterGroup({
   );
 }
 
+function UnavailableBadge({ availability }: { availability: string }) {
+  if (availability !== "unavailable") return null;
+  return (
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/30 text-[10px] font-medium uppercase tracking-wide">
+      Unavailable
+    </span>
+  );
+}
+
 function LabelChips({ labels }: { labels: HomeLabel[] }) {
   if (labels.length === 0) return null;
   return (
@@ -479,9 +512,12 @@ function CardsView({ listings }: { listings: HomeListingItem[] }) {
               )}
             </div>
             <div className="p-4">
-              <p className="font-medium line-clamp-1">
-                {l.address ?? "Unknown address"}
-              </p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium line-clamp-1">
+                  {l.address ?? "Unknown address"}
+                </p>
+                <UnavailableBadge availability={l.availability} />
+              </div>
               <p className="text-sm text-muted-foreground mt-1 flex flex-wrap gap-x-3">
                 {l.bedrooms ? <span>{l.bedrooms} BR</span> : null}
                 {l.bathrooms ? <span>{l.bathrooms} BA</span> : null}
@@ -550,6 +586,7 @@ function ListView({ listings }: { listings: HomeListingItem[] }) {
           poiDistances={l.poiDistances}
           labels={l.labels}
           priority={l.priority}
+          availability={l.availability}
         />
       ))}
     </ul>

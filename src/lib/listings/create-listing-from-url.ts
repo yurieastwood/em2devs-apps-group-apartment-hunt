@@ -101,6 +101,8 @@ export async function createListingFromUrl(
       squareFeet: parsed.squareFeet,
       priceUsd: parsed.priceUsd,
       description: parsed.description,
+      availability: parsed.availability,
+      lastCheckedAt: new Date(),
       raw: parsed.raw,
     })
     .returning({ id: listings.id });

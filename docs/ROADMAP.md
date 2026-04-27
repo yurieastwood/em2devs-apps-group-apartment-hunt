@@ -65,6 +65,10 @@ Per-listing priority number, contiguous 1..N within the family. Anyone can re-pr
 
 Sort the home-page listings by any combination of fields (priority, date added, price, bedrooms, bathrooms, sq ft, PK rating). Each criterion is a chip you can reorder, flip ascending/descending, or remove.
 
+## Slice 3.5 — Refresh + change log ✅
+
+Daily cron and on-demand re-scraping of every listing. Tracks price and availability changes; renders a per-listing audit log on the detail page and a "what changed today" banner on the home page. Unavailable listings keep their data but get a badge and a Hide-unavailable filter chip.
+
 ---
 
 ## Backlog 💡

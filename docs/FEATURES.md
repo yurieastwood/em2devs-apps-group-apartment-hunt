@@ -89,6 +89,20 @@ Family-scoped visibility via Clerk Organizations.
 
 Still planned: a backfill UI for moving pre-orgs personal listings into an active org (today the user runs SQL); disabling public sign-up in Clerk so only invited members can join.
 
+## Slice 3.5 — Refresh + change log
+
+Daily cron and on-demand re-scraping with a per-field audit trail.
+
+- **Schema**: `listings` gains `availability` (text — `available` / `unavailable` / `unknown`, default `unknown`), `last_checked_at` (timestamptz, nullable), `last_check_error` (text, nullable). New `listing_changes` table — `id`, `listing_id` (cascade), `field`, `old_value`, `new_value`, `source` (`cron` / `manual`), `changed_at` — with indexes `(listing_id, changed_at)` and `(changed_at)`.
+- **Parsers**: each parser returns `availability` alongside the existing fields. Zillow reads `homeStatus` (`FOR_RENT` → available; `RECENTLY_RENTED` / `OFF_MARKET` / `PENDING` → unavailable). Apartments.com reads `offers.availability` JSON-LD (`InStock` / `OutOfStock`) with a fallback regex on the page body. ApartmentList checks `listing.is_active` and the count of `available_units` with non-zero price.
+- **Refresh lib** (`src/lib/listings/refresh.ts`): `refreshListing(id, source)` re-fetches via the existing multi-profile `fetchListing`, diffs price + availability against the current row, inserts one `listing_changes` row per change, then updates the listing + `last_checked_at`. HTTP 404 on the source URL is treated as a strong "gone" signal — flips availability to `unavailable` even though the parser couldn't run. Other non-200 statuses (5xx, anti-bot 403) just record `last_check_error` without changing availability. `refreshListingsBatch(ids, source, concurrency=4)` runs them in parallel batches of 4 (matches the photo rehoster) so the 300 s function ceiling holds ~100 listings per invocation.
+- **Server actions** (`refresh-actions.ts`): `refreshListingAction(id)` verifies family scope via `userCanAccessListing`. `refreshAllListingsAction()` iterates everything in the active scope. Both revalidate `/` and the detail-page route after running.
+- **Cron route** (`/api/cron/refresh-listings`): bearer-authed against `CRON_SECRET`, runs across **all** listings (no scope — the cron is system-level). 300 s `maxDuration`. Listed in the public middleware matcher so the bearer check inside the handler can run. Vercel adds the `Authorization` header automatically based on `vercel.json` cron config.
+- **Cron schedule** (`vercel.json`): `0 6 * * *` daily at 06:00 UTC.
+- **Detail page**: header gains an availability badge (green/red), a "Last checked …" timestamp, and a "Refresh now" button (client component, server action). Below the comments is a collapsible `<ListingChangesLog>` showing the latest 50 changes with field, before → after, timestamp, and source.
+- **Home page**: `<RecentChangesBanner>` collapses 24-hour activity into a single banner above the listings; `<RefreshAllButton>` next to the view-mode toggle; `<AuditSizeWarning>` shows when `listing_changes` exceeds 5,000 rows. The browser gains a "Hide unavailable" filter chip and a small "Unavailable" badge on cards and list rows. `availability` flows through `HomeListingItem`.
+- **React purity rule workaround**: the recent-changes data fetch lives in a non-component helper (`getRecentChanges`) so the `Date.now()` window calculation doesn't trip `react-hooks/purity` (which only flags components and hooks).
+
 ## Slice 3.4 — Multi-field sort
 
 Tiered sort across any combination of structured fields on the home-page browser.

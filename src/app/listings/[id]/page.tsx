@@ -13,6 +13,8 @@ import { NearbySchools } from "./nearby-schools";
 import { ListingPoiDistances } from "@/components/listing-poi-distances";
 import { HomeMap } from "@/components/home-map";
 import { PriorityEditor } from "@/components/priority-editor";
+import { RefreshListingButton } from "@/components/refresh-listing-button";
+import { ListingChangesLog } from "@/components/listing-changes-log";
 import { getPois } from "@/lib/points-of-interest";
 
 import { ListingLabelsSection } from "@/components/listing-labels";
@@ -29,6 +31,34 @@ function fmtPrice(n: number | null): string | null {
 
 function fmtSqft(n: number | null): string | null {
   return n == null ? null : `${n.toLocaleString("en-US")} sq ft`;
+}
+
+function fmtLastChecked(d: Date | null): string {
+  if (!d) return "Never checked";
+  return `Last checked ${d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })}`;
+}
+
+function AvailabilityBadge({ value }: { value: string }) {
+  if (value === "unavailable") {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/30 text-xs font-medium">
+        Unavailable
+      </span>
+    );
+  }
+  if (value === "available") {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-xs font-medium">
+        Available
+      </span>
+    );
+  }
+  return null;
 }
 
 function PhotoErrorsSection({ raw }: { raw: unknown }) {
@@ -89,13 +119,18 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
         {listing.address && listing.address !== listing.title ? (
           <p className="text-muted-foreground">{listing.address}</p>
         ) : null}
-        <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Priority</span>
-          <PriorityEditor
-            key={`pri-${listing.id}-${listing.priority ?? "null"}`}
-            listingId={listing.id}
-            current={listing.priority}
-          />
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+          <span className="flex items-center gap-2">
+            <span>Priority</span>
+            <PriorityEditor
+              key={`pri-${listing.id}-${listing.priority ?? "null"}`}
+              listingId={listing.id}
+              current={listing.priority}
+            />
+          </span>
+          <AvailabilityBadge value={listing.availability} />
+          <span className="text-xs">{fmtLastChecked(listing.lastCheckedAt)}</span>
+          <RefreshListingButton listingId={listing.id} />
         </div>
       </header>
 
@@ -194,6 +229,8 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
           />
         </section>
       ) : null}
+
+      <ListingChangesLog listingId={listing.id} />
 
       <CommentsSection listingId={listing.id} />
     </main>

@@ -1,4 +1,9 @@
-import type { ListingPhoto, ParsedListing, ParsedSchool } from "../types";
+import type {
+  Availability,
+  ListingPhoto,
+  ParsedListing,
+  ParsedSchool,
+} from "../types";
 import {
   asNum,
   asString,
@@ -80,6 +85,24 @@ function extractApartmentsSchools(html: string): ParsedSchool[] {
   return out;
 }
 
+// Apartments.com signals availability in two places:
+// - JSON-LD offers.availability ("https://schema.org/InStock" / "OutOfStock")
+// - The page often shows "No longer available" copy when the listing is gone.
+function extractAvailability(graph0: Json, html: string): Availability {
+  const stockRaw = asString(get(graph0, "offers", "availability"));
+  if (stockRaw) {
+    const lower = stockRaw.toLowerCase();
+    if (lower.includes("instock")) return "available";
+    if (lower.includes("outofstock") || lower.includes("discontinued")) {
+      return "unavailable";
+    }
+  }
+  if (/no longer available/i.test(html) || /not available/i.test(html)) {
+    return "unavailable";
+  }
+  return "unknown";
+}
+
 function extractPhotos(graphItem: Json): ListingPhoto[] {
   const images = get(graphItem, "mainEntity", "image");
   if (!Array.isArray(images)) return [];
@@ -142,6 +165,7 @@ export function parseApartments(
     description:
       asString(get(graph0, "description")) ??
       asString(get(firstRental, "Description")),
+    availability: extractAvailability(graph0, html),
     photos: extractPhotos(graph0),
     schools: extractApartmentsSchools(html),
     raw: { jsonLd: ld, rental: firstRental },

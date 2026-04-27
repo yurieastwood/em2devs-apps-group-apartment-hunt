@@ -23,6 +23,12 @@ import { ViewModeToggle } from "@/components/view-mode-toggle";
 import { HomeMap, type HomeMapProps } from "@/components/home-map";
 import { HomeSettingsForm } from "@/components/home-settings-form";
 import { PoisSection } from "@/components/pois-section";
+import { AuditSizeWarning } from "@/components/audit-size-warning";
+import {
+  RecentChangesBanner,
+  getRecentChanges,
+} from "@/components/recent-changes-banner";
+import { RefreshAllButton } from "@/components/refresh-all-button";
 import {
   ListingsBrowser,
   type HomeListingItem,
@@ -123,6 +129,8 @@ export default async function HomePage() {
 
   const ids = allListings.map((l) => l.id);
 
+  const recentChanges = await getRecentChanges(ids);
+
   const [coverRows, schoolRows, distanceRows] =
     ids.length === 0
       ? [[], [], []]
@@ -201,6 +209,7 @@ export default async function HomePage() {
       squareFeet: l.squareFeet,
       priceUsd: l.priceUsd,
       priority: l.priority,
+      availability: l.availability,
       nearestPkRating: nearestPkRatingMap.get(l.id) ?? null,
       poiDistances: distMap.get(l.id) ?? [],
       labels: (labelsByListing.get(l.id) ?? []).map((lbl) => ({
@@ -236,9 +245,14 @@ export default async function HomePage() {
         <HomeMap home={mapData.home} pins={mapData.pins} pois={poiPins} />
       </section>
 
+      <AuditSizeWarning />
+
+      <RecentChangesBanner changes={recentChanges} />
+
       <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <h1 className="text-2xl font-semibold">Listings</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {ids.length > 0 ? <RefreshAllButton /> : null}
           <ViewModeToggle current={viewMode} />
           <Link
             href="/listings/new"

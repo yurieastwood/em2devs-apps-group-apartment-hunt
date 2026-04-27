@@ -1,4 +1,9 @@
-import type { ListingPhoto, ParsedListing, ParsedSchool } from "../types";
+import type {
+  Availability,
+  ListingPhoto,
+  ParsedListing,
+  ParsedSchool,
+} from "../types";
 import {
   asNum,
   asString,
@@ -112,6 +117,26 @@ function extractSchools(component: Json): ParsedSchool[] {
   return out;
 }
 
+// ApartmentList signals availability via `listing.is_active` and the count of
+// floor plans with a non-zero price (`available_units` items where price > 0).
+// Treat the listing as unavailable when explicitly inactive or when no plan
+// has a real price.
+function extractAvailability(listing: Json): Availability {
+  if (listing == null || typeof listing !== "object") return "unknown";
+  const isActive = get(listing, "is_active");
+  if (isActive === false) return "unavailable";
+  const units = get(listing, "available_units");
+  if (Array.isArray(units)) {
+    const hasReal = units.some((u) => {
+      const p = asNum(get(u, "price"));
+      return p != null && p > 0;
+    });
+    if (!hasReal) return "unavailable";
+    return "available";
+  }
+  return "unknown";
+}
+
 export function parseApartmentList(
   sourceUrl: string,
   html: string,
@@ -167,6 +192,7 @@ export function parseApartmentList(
     description:
       asString(get(listing, "description")) ??
       asString(get(ld, "description")),
+    availability: extractAvailability(listing),
     photos: extractPhotos(listing),
     schools: extractSchools(component),
     raw: { jsonLd: ld, apartmentLd: aptLd, listing, pickedPlan: plan },

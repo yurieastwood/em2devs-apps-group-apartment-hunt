@@ -1,4 +1,9 @@
-import type { ListingPhoto, ParsedListing, ParsedSchool } from "../types";
+import type {
+  Availability,
+  ListingPhoto,
+  ParsedListing,
+  ParsedSchool,
+} from "../types";
 import {
   asNum,
   asString,
@@ -69,6 +74,23 @@ function extractSchools(property: Json): ParsedSchool[] {
   return out;
 }
 
+// Zillow's homeStatus values: FOR_RENT / FOR_SALE → available; RECENTLY_RENTED
+// / RECENTLY_SOLD / OFF_MARKET → unavailable. Anything else stays unknown.
+function extractAvailability(property: Json): Availability {
+  const status = asString(get(property, "homeStatus"));
+  if (!status) return "unknown";
+  const s = status.toUpperCase();
+  if (s === "FOR_RENT" || s === "FOR_SALE") return "available";
+  if (
+    s === "RECENTLY_RENTED" ||
+    s === "RECENTLY_SOLD" ||
+    s === "OFF_MARKET" ||
+    s === "PENDING"
+  )
+    return "unavailable";
+  return "unknown";
+}
+
 function extractPhotos(property: Json): ListingPhoto[] {
   const list = get(property, "originalPhotos");
   if (!Array.isArray(list)) return [];
@@ -117,6 +139,7 @@ export function parseZillow(sourceUrl: string, html: string): ParsedListing {
     squareFeet: asNum(get(property, "livingArea")),
     priceUsd: asNum(get(ld, "offers", "price")) ?? asNum(get(property, "price")),
     description: asString(get(property, "description")),
+    availability: extractAvailability(property),
     photos: extractPhotos(property),
     schools: extractSchools(property),
     raw: { jsonLd: ld, property },
