@@ -89,6 +89,15 @@ Family-scoped visibility via Clerk Organizations.
 
 Still planned: a backfill UI for moving pre-orgs personal listings into an active org (today the user runs SQL); disabling public sign-up in Clerk so only invited members can join.
 
+## Slice 3.4 — Multi-field sort
+
+Tiered sort across any combination of structured fields on the home-page browser.
+
+- **State** (`src/components/listings-browser.tsx`): `sortCriteria: SortCriterion[]` where each criterion is `{ field, direction }`. Fields: `priority`, `createdAt`, `price`, `beds`, `baths`, `sqft`, `pkRating`. Default state is `[{ field: "priority", direction: "asc" }]`.
+- **Comparator**: `compareWithCriteria` walks the criteria in order; first non-zero `compareCriterion` result wins. `compareCriterion` extracts the field via `fieldValue` (returns a `number | null`) and treats nulls as last regardless of direction, so unprioritized listings always trail prioritized ones even when the column is sorted descending.
+- **UI**: `<SortBuilder>` renders one `<SortChip>` per criterion plus a "+ Add field" select that lists only fields not yet used. Each chip shows the field label, an arrow indicating direction (clicking the label toggles asc/desc), `‹`/`›` buttons to swap with neighbors (disabled at the ends), and `×` to remove. Removing the last criterion replaces with `DEFAULT_SORT` so the list is never empty.
+- The previous single `<select>` of preset sort options is gone; `priority` ascending stays the default behavior.
+
 ## Slice 3.3 — Listing priority
 
 A contiguous 1..N priority within each scope (org or personal). Anyone in the family can change it; setting one slot shifts the others to keep the sequence packed.

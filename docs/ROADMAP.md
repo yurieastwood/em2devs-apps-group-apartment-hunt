@@ -61,6 +61,10 @@ Listing detail page renders a map with the listing's pin and every POI in the fa
 
 Per-listing priority number, contiguous 1..N within the family. Anyone can re-prioritize from the cards, list rows, or detail page; the home page sorts by priority by default.
 
+## Slice 3.4 — Multi-field sort ✅
+
+Sort the home-page listings by any combination of fields (priority, date added, price, bedrooms, bathrooms, sq ft, PK rating). Each criterion is a chip you can reorder, flip ascending/descending, or remove.
+
 ---
 
 ## Backlog 💡
@@ -69,7 +73,6 @@ Grouped by priority. Add new items under whichever group fits.
 
 ### High — meaningful gaps for daily use
 
-- Advanced/Complex sorting; sort by multiple fields simultaneously, each adding on the sorting priority.
 - Email notifications when a family member adds a listing or comments
 - Manual entry (no source URL) for sites we don't parse
 - Bulk-apply labels (select many → apply one)

@@ -38,15 +38,87 @@ export type HomeListingItem = {
   labels: HomeLabel[];
 };
 
-type SortOption =
+type SortField =
   | "priority"
-  | "newest"
-  | "oldest"
-  | "price-asc"
-  | "price-desc"
-  | "beds-desc"
-  | "baths-desc"
-  | "rating-desc";
+  | "createdAt"
+  | "price"
+  | "beds"
+  | "baths"
+  | "sqft"
+  | "pkRating";
+
+type SortDirection = "asc" | "desc";
+
+type SortCriterion = { field: SortField; direction: SortDirection };
+
+const ALL_SORT_FIELDS: SortField[] = [
+  "priority",
+  "createdAt",
+  "price",
+  "beds",
+  "baths",
+  "sqft",
+  "pkRating",
+];
+
+const SORT_FIELD_LABEL: Record<SortField, string> = {
+  priority: "Priority",
+  createdAt: "Date added",
+  price: "Price",
+  beds: "Bedrooms",
+  baths: "Bathrooms",
+  sqft: "Sq ft",
+  pkRating: "PK rating",
+};
+
+const DEFAULT_SORT: SortCriterion[] = [
+  { field: "priority", direction: "asc" },
+];
+
+function fieldValue(field: SortField, l: HomeListingItem): number | null {
+  switch (field) {
+    case "priority":
+      return l.priority;
+    case "createdAt":
+      return new Date(l.createdAt).getTime();
+    case "price":
+      return l.priceUsd;
+    case "beds":
+      return asNum(l.bedrooms);
+    case "baths":
+      return asNum(l.bathrooms);
+    case "sqft":
+      return l.squareFeet;
+    case "pkRating":
+      return l.nearestPkRating;
+  }
+}
+
+function compareCriterion(
+  c: SortCriterion,
+  a: HomeListingItem,
+  b: HomeListingItem,
+): number {
+  const va = fieldValue(c.field, a);
+  const vb = fieldValue(c.field, b);
+  // Nulls sort last regardless of direction.
+  if (va === null && vb === null) return 0;
+  if (va === null) return 1;
+  if (vb === null) return -1;
+  return c.direction === "asc" ? va - vb : vb - va;
+}
+
+function compareWithCriteria(
+  criteria: SortCriterion[],
+  a: HomeListingItem,
+  b: HomeListingItem,
+): number {
+  for (const c of criteria) {
+    const r = compareCriterion(c, a, b);
+    if (r !== 0) return r;
+  }
+  return 0;
+}
 
 const BEDS_OPTIONS = [0, 1, 2, 3, 4] as const;
 const BATHS_OPTIONS = [0, 1, 2, 3] as const;
@@ -78,7 +150,8 @@ export function ListingsBrowser({
   viewMode: "cards" | "list";
   scopeLabels: HomeLabel[];
 }) {
-  const [sort, setSort] = useState<SortOption>("priority");
+  const [sortCriteria, setSortCriteria] =
+    useState<SortCriterion[]>(DEFAULT_SORT);
   const [minBeds, setMinBeds] = useState(0);
   const [minBaths, setMinBaths] = useState(0);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
@@ -110,30 +183,12 @@ export function ListingsBrowser({
       return true;
     });
 
-    const sorter: Record<
-      SortOption,
-      (a: HomeListingItem, b: HomeListingItem) => number
-    > = {
-      priority: (a, b) => {
-        const pa = a.priority ?? Number.POSITIVE_INFINITY;
-        const pb = b.priority ?? Number.POSITIVE_INFINITY;
-        if (pa !== pb) return pa - pb;
-        return b.createdAt.localeCompare(a.createdAt);
-      },
-      newest: (a, b) => b.createdAt.localeCompare(a.createdAt),
-      oldest: (a, b) => a.createdAt.localeCompare(b.createdAt),
-      "price-asc": (a, b) =>
-        (a.priceUsd ?? Number.POSITIVE_INFINITY) -
-        (b.priceUsd ?? Number.POSITIVE_INFINITY),
-      "price-desc": (a, b) => (b.priceUsd ?? -1) - (a.priceUsd ?? -1),
-      "beds-desc": (a, b) =>
-        (asNum(b.bedrooms) ?? -1) - (asNum(a.bedrooms) ?? -1),
-      "baths-desc": (a, b) =>
-        (asNum(b.bathrooms) ?? -1) - (asNum(a.bathrooms) ?? -1),
-      "rating-desc": (a, b) => (b.nearestPkRating ?? -1) - (a.nearestPkRating ?? -1),
-    };
-    return [...filtered].sort(sorter[sort]);
-  }, [listings, sort, minBeds, minBaths, maxPrice, minPkRating, activeLabels]);
+    const effectiveCriteria =
+      sortCriteria.length > 0 ? sortCriteria : DEFAULT_SORT;
+    return [...filtered].sort((a, b) =>
+      compareWithCriteria(effectiveCriteria, a, b),
+    );
+  }, [listings, sortCriteria, minBeds, minBaths, maxPrice, minPkRating, activeLabels]);
 
   function toggleLabel(id: string) {
     setActiveLabels((prev) => {
@@ -144,26 +199,52 @@ export function ListingsBrowser({
     });
   }
 
+  function addSortField(field: SortField) {
+    setSortCriteria((prev) => [...prev, { field, direction: "asc" }]);
+  }
+
+  function removeSortAt(index: number) {
+    setSortCriteria((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length > 0 ? next : DEFAULT_SORT;
+    });
+  }
+
+  function toggleDirectionAt(index: number) {
+    setSortCriteria((prev) =>
+      prev.map((c, i) =>
+        i === index
+          ? { ...c, direction: c.direction === "asc" ? "desc" : "asc" }
+          : c,
+      ),
+    );
+  }
+
+  function moveSortAt(index: number, delta: -1 | 1) {
+    setSortCriteria((prev) => {
+      const target = index + delta;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
+
+  const availableSortFields = ALL_SORT_FIELDS.filter(
+    (f) => !sortCriteria.some((c) => c.field === f),
+  );
+
   return (
     <div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-xs">
-        <label className="flex items-center gap-2">
-          <span className="text-muted-foreground">Sort</span>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortOption)}
-            className="border border-border bg-input-background text-foreground rounded px-2 py-1"
-          >
-            <option value="priority">Priority</option>
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-            <option value="price-asc">Price (low → high)</option>
-            <option value="price-desc">Price (high → low)</option>
-            <option value="beds-desc">Most bedrooms</option>
-            <option value="baths-desc">Most bathrooms</option>
-            <option value="rating-desc">Nearest PK rating (high → low)</option>
-          </select>
-        </label>
+        <SortBuilder
+          criteria={sortCriteria}
+          available={availableSortFields}
+          onAdd={addSortField}
+          onRemove={removeSortAt}
+          onToggleDirection={toggleDirectionAt}
+          onMove={moveSortAt}
+        />
         <ThresholdGroup
           label="Beds"
           options={BEDS_OPTIONS}
@@ -208,6 +289,118 @@ export function ListingsBrowser({
         <ListView listings={visible} />
       )}
     </div>
+  );
+}
+
+function SortBuilder({
+  criteria,
+  available,
+  onAdd,
+  onRemove,
+  onToggleDirection,
+  onMove,
+}: {
+  criteria: SortCriterion[];
+  available: SortField[];
+  onAdd: (f: SortField) => void;
+  onRemove: (i: number) => void;
+  onToggleDirection: (i: number) => void;
+  onMove: (i: number, delta: -1 | 1) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-muted-foreground">Sort</span>
+      {criteria.map((c, i) => (
+        <SortChip
+          key={`${c.field}-${i}`}
+          criterion={c}
+          isFirst={i === 0}
+          isLast={i === criteria.length - 1}
+          onToggleDirection={() => onToggleDirection(i)}
+          onRemove={() => onRemove(i)}
+          onMoveUp={() => onMove(i, -1)}
+          onMoveDown={() => onMove(i, 1)}
+        />
+      ))}
+      {available.length > 0 ? (
+        <select
+          value=""
+          onChange={(e) => {
+            if (e.target.value) {
+              onAdd(e.target.value as SortField);
+            }
+          }}
+          className="border border-border bg-input-background text-foreground rounded px-2 py-1"
+        >
+          <option value="">+ Add field</option>
+          {available.map((f) => (
+            <option key={f} value={f}>
+              {SORT_FIELD_LABEL[f]}
+            </option>
+          ))}
+        </select>
+      ) : null}
+    </div>
+  );
+}
+
+function SortChip({
+  criterion,
+  isFirst,
+  isLast,
+  onToggleDirection,
+  onRemove,
+  onMoveUp,
+  onMoveDown,
+}: {
+  criterion: SortCriterion;
+  isFirst: boolean;
+  isLast: boolean;
+  onToggleDirection: () => void;
+  onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-primary bg-primary/15 text-foreground">
+      {!isFirst ? (
+        <button
+          type="button"
+          onClick={onMoveUp}
+          aria-label="Move earlier"
+          className="opacity-60 hover:opacity-100"
+        >
+          ‹
+        </button>
+      ) : null}
+      <button
+        type="button"
+        onClick={onToggleDirection}
+        className="font-medium"
+        title="Toggle direction"
+      >
+        {SORT_FIELD_LABEL[criterion.field]}{" "}
+        {criterion.direction === "asc" ? "↑" : "↓"}
+      </button>
+      {!isLast ? (
+        <button
+          type="button"
+          onClick={onMoveDown}
+          aria-label="Move later"
+          className="opacity-60 hover:opacity-100"
+        >
+          ›
+        </button>
+      ) : null}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label="Remove sort field"
+        className="opacity-60 hover:opacity-100 hover:text-destructive ml-0.5"
+      >
+        ×
+      </button>
+    </span>
   );
 }
 
