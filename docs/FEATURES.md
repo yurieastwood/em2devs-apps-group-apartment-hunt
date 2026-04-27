@@ -89,6 +89,21 @@ Family-scoped visibility via Clerk Organizations.
 
 Still planned: a backfill UI for moving pre-orgs personal listings into an active org (today the user runs SQL); disabling public sign-up in Clerk so only invited members can join.
 
+## Slice 3.6 — Role-based access (admins vs members)
+
+Two-tier permissions on top of Clerk Organizations. The org creator is `org:admin` automatically; invitees default to `org:member`. Roles are managed from Clerk's `<OrganizationProfile />` UI (no extra UI built here).
+
+- **Helper** (`src/lib/auth/roles.ts`): `isOrgAdmin()` reads `auth().has({ role: "org:admin" })`. Personal-mode (no active org) returns false — treated as non-admin.
+- **Server-action gates (admins only)**: `createListingAction` + `importListingAction`, `updateListingAction`, `setHomeAction`, `addPoiAction`, `updatePoiAction`, `deletePoiAction`, `refreshAllListingsAction`. Each returns an error state for non-admins ("Admins only — ask an admin to …").
+- **Server-action gates (admin OR original author)**: `deleteListingAction` and `deleteCommentAction`. Members can still remove their own; admins can remove anyone's.
+- **Open to everyone in the family**: comment/reaction add, single-listing `refreshListingAction`, `setListingPriorityAction`, label apply/unapply (apply uses scope-level labels).
+- **Page-level redirects**: `/listings/new` and `/listings/[id]/edit` `redirect("/")` (or back to the detail page) for non-admins, so deep links don't leave a non-admin staring at a form whose submit will fail.
+- **UI gating**:
+  - Home page: `<HomeSettingsForm>` swapped for a read-only "Your home: …" line for members; `<PoisSection canEdit={isAdmin}>` hides Add/Edit/Delete buttons; "Add a listing" link, "Refresh all" button, and the empty-state CTA only render for admins (members see "Ask an admin to add one").
+  - Detail page: Edit link is admin-only; Delete is admin OR owner. Comments delete is admin OR comment author.
+  - Card / list rows: `canDelete` (admin OR listing owner) replaces the old `isOwner` field on `HomeListingItem`.
+- **Invites**: handled by Clerk's built-in `<OrganizationProfile />` (reachable from `<OrganizationSwitcher />`). Default Clerk permissions only let `org:admin` invite, so no extra wiring needed.
+
 ## Slice 3.5 — Refresh + change log
 
 Daily cron and on-demand re-scraping with a per-field audit trail.

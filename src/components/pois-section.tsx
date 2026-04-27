@@ -3,11 +3,13 @@ import { getPois } from "@/lib/points-of-interest";
 import { PoiRow } from "./poi-row";
 import { AddPoiForm } from "./add-poi-form";
 
-export async function PoisSection() {
+export async function PoisSection({ canEdit }: { canEdit: boolean }) {
   const { userId, orgId } = await auth();
   if (!userId) return null;
 
   const pois = await getPois({ userId, orgId });
+
+  if (pois.length === 0 && !canEdit) return null;
 
   return (
     <div className="mb-3">
@@ -23,6 +25,7 @@ export async function PoisSection() {
                   label: poi.label,
                   address: poi.address,
                 }}
+                canEdit={canEdit}
               />
             </li>
           ))}
@@ -34,7 +37,7 @@ export async function PoisSection() {
           cards.
         </p>
       )}
-      <AddPoiForm key={`add-${pois.length}`} />
+      {canEdit ? <AddPoiForm key={`add-${pois.length}`} /> : null}
     </div>
   );
 }

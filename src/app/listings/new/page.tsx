@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { isOrgAdmin } from "@/lib/auth/roles";
 import { NewListingForm } from "./new-listing-form";
 import { ImportForm } from "./import-form";
 
@@ -12,6 +14,8 @@ export default async function NewListingPage({
 }: {
   searchParams: SearchParams;
 }) {
+  if (!(await isOrgAdmin())) redirect("/");
+
   const { mode } = await searchParams;
   const isBulk = mode === "bulk";
 

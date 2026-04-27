@@ -33,7 +33,7 @@ export type HomeListingItem = {
   nearestPkRating: number | null;
   availability: string;
   coverUrl: string | null;
-  isOwner: boolean;
+  canDelete: boolean;
   createdAt: string;
   poiDistances: HomePoiDistance[];
   labels: HomeLabel[];
@@ -554,7 +554,7 @@ function CardsView({ listings }: { listings: HomeListingItem[] }) {
               listingId={l.id}
               current={l.priority}
             />
-            {l.isOwner ? (
+            {l.canDelete ? (
               <DeleteListingButton
                 listingId={l.id}
                 label="Delete"
@@ -582,7 +582,7 @@ function ListView({ listings }: { listings: HomeListingItem[] }) {
           priceUsd={l.priceUsd}
           nearestPkRating={l.nearestPkRating}
           coverUrl={l.coverUrl}
-          isOwner={l.isOwner}
+          canDelete={l.canDelete}
           poiDistances={l.poiDistances}
           labels={l.labels}
           priority={l.priority}

@@ -2,6 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { isOrgAdmin } from "@/lib/auth/roles";
 import {
   createListingFromUrl,
   type CreateListingError,
@@ -30,6 +31,9 @@ export async function createListingAction(
 ): Promise<ActionState> {
   const { userId, orgId } = await auth();
   if (!userId) return { kind: "error", message: "You're not signed in." };
+  if (!(await isOrgAdmin())) {
+    return { kind: "error", message: "Admins only — ask an admin to add this." };
+  }
 
   const url = String(formData.get("url") ?? "").trim();
   if (!url) return { kind: "error", message: "Paste a listing URL first." };
@@ -69,6 +73,7 @@ export async function importListingAction(
 ): Promise<ImportResult> {
   const { userId, orgId } = await auth();
   if (!userId) return { ok: false, reason: "Not signed in" };
+  if (!(await isOrgAdmin())) return { ok: false, reason: "Admins only" };
 
   const result = await createListingFromUrl(url, userId, orgId ?? null);
   if (result.ok) return { ok: true, id: result.id };

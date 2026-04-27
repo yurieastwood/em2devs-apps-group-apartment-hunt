@@ -2,6 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
 import { comments } from "@/db/schema";
+import { isOrgAdmin } from "@/lib/auth/roles";
 import { CommentForm } from "./comment-form";
 import { DeleteCommentButton } from "./delete-comment-button";
 
@@ -45,6 +46,7 @@ function fmtDate(d: Date): string {
 
 export async function CommentsSection({ listingId }: { listingId: string }) {
   const { userId } = await auth();
+  const isAdmin = await isOrgAdmin();
 
   const rows = await db
     .select()
@@ -69,7 +71,8 @@ export async function CommentsSection({ listingId }: { listingId: string }) {
         <ul className="mt-6 space-y-5">
           {rows.map((comment) => {
             const author = authors.get(comment.authorClerkUserId);
-            const isOwn = comment.authorClerkUserId === userId;
+            const canDelete =
+              isAdmin || comment.authorClerkUserId === userId;
             return (
               <li key={comment.id} className="flex gap-3">
                 {author?.imageUrl ? (
@@ -90,7 +93,7 @@ export async function CommentsSection({ listingId }: { listingId: string }) {
                     <time className="text-muted-foreground text-xs">
                       {fmtDate(comment.createdAt)}
                     </time>
-                    {isOwn ? (
+                    {canDelete ? (
                       <DeleteCommentButton
                         commentId={comment.id}
                         listingId={listingId}

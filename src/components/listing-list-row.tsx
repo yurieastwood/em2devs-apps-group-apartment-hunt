@@ -31,7 +31,7 @@ export type ListingListRowProps = {
   priceUsd: number | null;
   nearestPkRating?: number | null;
   coverUrl: string | null;
-  isOwner?: boolean;
+  canDelete?: boolean;
   poiDistances?: ListingListRowPoi[];
   labels?: ListingListRowLabel[];
   priority?: number | null;
@@ -47,7 +47,7 @@ export function ListingListRow({
   priceUsd,
   nearestPkRating,
   coverUrl,
-  isOwner,
+  canDelete,
   poiDistances,
   labels,
   priority,
@@ -126,7 +126,7 @@ export function ListingListRow({
               Show photo
             </button>
           ) : null}
-          {isOwner ? (
+          {canDelete ? (
             <DeleteListingButton
               listingId={listingId}
               label="Delete"

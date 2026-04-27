@@ -69,6 +69,10 @@ Sort the home-page listings by any combination of fields (priority, date added, 
 
 Daily cron and on-demand re-scraping of every listing. Tracks price and availability changes; renders a per-listing audit log on the detail page and a "what changed today" banner on the home page. Unavailable listings keep their data but get a badge and a Hide-unavailable filter chip.
 
+## Slice 3.6 — Role-based access (admins vs members) ✅
+
+Clerk Organization roles gate write features. Admins can add/edit/delete listings, manage home address and POIs, refresh all listings, and invite members. Members can browse, comment, react, re-prioritize, refresh a single listing, and delete their own listings/comments.
+
 ---
 
 ## Backlog 💡

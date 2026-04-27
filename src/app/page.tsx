@@ -14,6 +14,7 @@ import { urlFor } from "@/lib/storage/r2";
 import { VIEW_MODE_COOKIE, type ViewMode } from "@/lib/view-mode";
 import { getHome } from "@/lib/home-settings";
 import { getPois } from "@/lib/points-of-interest";
+import { isOrgAdmin } from "@/lib/auth/roles";
 import { listingScope } from "@/lib/listings/access";
 import {
   getLabelsForListings,
@@ -115,6 +116,7 @@ function buildNearestPkRatingMap(
 export default async function HomePage() {
   const { userId, orgId } = await auth();
   const viewMode = await getViewMode();
+  const isAdmin = await isOrgAdmin();
 
   const scope = listingScope({ userId, orgId });
 
@@ -220,7 +222,7 @@ export default async function HomePage() {
       coverUrl: coverMap.has(l.id)
         ? await urlFor(coverMap.get(l.id) as string)
         : null,
-      isOwner: !!userId && l.ownerClerkUserId === userId,
+      canDelete: isAdmin || (!!userId && l.ownerClerkUserId === userId),
       createdAt: l.createdAt.toISOString(),
     })),
   );
@@ -237,11 +239,18 @@ export default async function HomePage() {
   return (
     <main className="flex-1 max-w-5xl mx-auto p-8 w-full">
       <section className="mb-8">
-        <HomeSettingsForm
-          key={userHome?.homeAddress ?? "no-home"}
-          currentAddress={userHome?.homeAddress ?? null}
-        />
-        <PoisSection />
+        {isAdmin ? (
+          <HomeSettingsForm
+            key={userHome?.homeAddress ?? "no-home"}
+            currentAddress={userHome?.homeAddress ?? null}
+          />
+        ) : userHome?.homeAddress ? (
+          <p className="text-sm text-muted-foreground mb-3">
+            <span className="text-foreground font-medium">Your home:</span>{" "}
+            {userHome.homeAddress}
+          </p>
+        ) : null}
+        <PoisSection canEdit={isAdmin} />
         <HomeMap home={mapData.home} pins={mapData.pins} pois={poiPins} />
       </section>
 
@@ -252,24 +261,33 @@ export default async function HomePage() {
       <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <h1 className="text-2xl font-semibold">Listings</h1>
         <div className="flex items-center gap-3 flex-wrap">
-          {ids.length > 0 ? <RefreshAllButton /> : null}
+          {isAdmin && ids.length > 0 ? <RefreshAllButton /> : null}
           <ViewModeToggle current={viewMode} />
-          <Link
-            href="/listings/new"
-            className="bg-primary hover:opacity-90 text-primary-foreground px-4 py-2 rounded text-sm"
-          >
-            Add a listing
-          </Link>
+          {isAdmin ? (
+            <Link
+              href="/listings/new"
+              className="bg-primary hover:opacity-90 text-primary-foreground px-4 py-2 rounded text-sm"
+            >
+              Add a listing
+            </Link>
+          ) : null}
         </div>
       </div>
 
       {items.length === 0 ? (
         <p className="text-muted-foreground">
-          No listings yet.{" "}
-          <Link href="/listings/new" className="text-primary underline">
-            Add the first one
-          </Link>
-          .
+          No listings yet.
+          {isAdmin ? (
+            <>
+              {" "}
+              <Link href="/listings/new" className="text-primary underline">
+                Add the first one
+              </Link>
+              .
+            </>
+          ) : (
+            " Ask an admin to add one."
+          )}
         </p>
       ) : (
         <ListingsBrowser

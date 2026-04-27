@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/db/client";
 import { listings } from "@/db/schema";
+import { isOrgAdmin } from "@/lib/auth/roles";
 import { userCanAccessListing } from "@/lib/listings/access";
 import { EditListingForm } from "./edit-form";
 
@@ -15,6 +16,7 @@ export default async function EditListingPage({ params }: { params: Params }) {
   const { id } = await params;
   const { userId, orgId } = await auth();
   if (!userId) redirect("/sign-in");
+  if (!(await isOrgAdmin())) redirect(`/listings/${id}`);
 
   const [listing] = await db
     .select()

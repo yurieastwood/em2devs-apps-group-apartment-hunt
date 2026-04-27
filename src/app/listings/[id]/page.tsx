@@ -18,6 +18,7 @@ import { ListingChangesLog } from "@/components/listing-changes-log";
 import { getPois } from "@/lib/points-of-interest";
 
 import { ListingLabelsSection } from "@/components/listing-labels";
+import { isOrgAdmin } from "@/lib/auth/roles";
 import { userCanAccessListing } from "@/lib/listings/access";
 
 export const runtime = "nodejs";
@@ -97,6 +98,9 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
   if (!userCanAccessListing(listing, { userId, orgId })) notFound();
 
   const isOwner = userId === listing.ownerClerkUserId;
+  const isAdmin = await isOrgAdmin();
+  const canEdit = isAdmin;
+  const canDelete = isAdmin || isOwner;
 
   const userPois = userId ? await getPois({ userId, orgId }) : [];
 
@@ -180,19 +184,16 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
         >
           View original listing on {listing.sourceHost} →
         </a>
-        {isOwner ? (
-          <>
-            <Link
-              href={`/listings/${listing.id}/edit`}
-              className="text-sm text-muted-foreground hover:text-foreground hover:underline"
-            >
-              Edit
-            </Link>
-            <DeleteListingButton
-              listingId={listing.id}
-              navigateTo="/"
-            />
-          </>
+        {canEdit ? (
+          <Link
+            href={`/listings/${listing.id}/edit`}
+            className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+          >
+            Edit
+          </Link>
+        ) : null}
+        {canDelete ? (
+          <DeleteListingButton listingId={listing.id} navigateTo="/" />
         ) : null}
       </div>
 

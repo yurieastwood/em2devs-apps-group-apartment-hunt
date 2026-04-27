@@ -12,9 +12,10 @@ const initial: PoiState = { kind: "idle" };
 
 type Props = {
   poi: { id: string; label: string; address: string };
+  canEdit: boolean;
 };
 
-export function PoiRow({ poi }: Props) {
+export function PoiRow({ poi, canEdit }: Props) {
   const [editing, setEditing] = useState(false);
 
   if (editing) {
@@ -27,14 +28,18 @@ export function PoiRow({ poi }: Props) {
         <strong>{poi.label}:</strong>{" "}
         <span className="text-muted-foreground">{poi.address}</span>
       </span>
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="text-primary hover:underline text-xs"
-      >
-        Edit
-      </button>
-      <DeletePoiButton poiId={poi.id} />
+      {canEdit ? (
+        <>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="text-primary hover:underline text-xs"
+          >
+            Edit
+          </button>
+          <DeletePoiButton poiId={poi.id} />
+        </>
+      ) : null}
     </div>
   );
 }

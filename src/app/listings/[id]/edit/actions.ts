@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { listings } from "@/db/schema";
+import { isOrgAdmin } from "@/lib/auth/roles";
 import { listingScope } from "@/lib/listings/access";
 
 export type EditState = { kind: "idle" } | { kind: "error"; message: string };
@@ -39,6 +40,9 @@ export async function updateListingAction(
 ): Promise<EditState> {
   const { userId, orgId } = await auth();
   if (!userId) return { kind: "error", message: "You're not signed in." };
+  if (!(await isOrgAdmin())) {
+    return { kind: "error", message: "Admins only — ask an admin to edit this." };
+  }
 
   const scope = listingScope({ userId, orgId });
   if (!scope) {

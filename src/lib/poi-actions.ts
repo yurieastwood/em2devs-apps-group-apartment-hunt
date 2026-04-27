@@ -2,6 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+import { isOrgAdmin } from "@/lib/auth/roles";
 import { geocodeAddress } from "./geocode";
 import { deletePoiById, insertPoi, updatePoi } from "./points-of-interest";
 import {
@@ -26,6 +27,9 @@ export async function addPoiAction(
 ): Promise<PoiState> {
   const { userId, orgId } = await auth();
   if (!userId) return { kind: "error", message: "You're not signed in." };
+  if (!(await isOrgAdmin())) {
+    return { kind: "error", message: "Admins only — ask an admin to add this." };
+  }
 
   const label = readField(formData, "label");
   const address = readField(formData, "address");
@@ -66,6 +70,9 @@ export async function updatePoiAction(
 ): Promise<PoiState> {
   const { userId, orgId } = await auth();
   if (!userId) return { kind: "error", message: "You're not signed in." };
+  if (!(await isOrgAdmin())) {
+    return { kind: "error", message: "Admins only — ask an admin to edit this." };
+  }
 
   const label = readField(formData, "label");
   const address = readField(formData, "address");
@@ -105,6 +112,7 @@ export async function updatePoiAction(
 export async function deletePoiAction(poiId: string): Promise<void> {
   const { userId, orgId } = await auth();
   if (!userId) return;
+  if (!(await isOrgAdmin())) return;
   await deletePoiById({ userId, orgId }, poiId);
   revalidatePath("/");
 }

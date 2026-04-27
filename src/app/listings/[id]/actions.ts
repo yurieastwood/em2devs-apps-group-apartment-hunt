@@ -11,6 +11,7 @@ import {
   reactions,
 } from "@/db/schema";
 import { deleteObjects } from "@/lib/storage/r2";
+import { isOrgAdmin } from "@/lib/auth/roles";
 import { listingScope, userCanAccessListing } from "@/lib/listings/access";
 import { shiftPrioritiesAfterDelete } from "@/lib/listings/priority";
 
@@ -42,6 +43,13 @@ export async function deleteListingAction(listingId: string): Promise<void> {
 
   const scope = listingScope({ userId, orgId });
   if (!scope) return;
+
+  const target = await getAccessibleListing(listingId, { userId, orgId });
+  if (!target) return;
+
+  const isAdmin = await isOrgAdmin();
+  const isOwner = target.ownerClerkUserId === userId;
+  if (!isAdmin && !isOwner) return;
 
   const photos = await db
     .select({ r2Key: listingPhotos.r2Key })
@@ -111,14 +119,18 @@ export async function deleteCommentAction(
   const { userId } = await auth();
   if (!userId) return;
 
-  await db
-    .delete(comments)
-    .where(
-      and(
-        eq(comments.id, commentId),
-        eq(comments.authorClerkUserId, userId),
-      ),
-    );
+  if (await isOrgAdmin()) {
+    await db.delete(comments).where(eq(comments.id, commentId));
+  } else {
+    await db
+      .delete(comments)
+      .where(
+        and(
+          eq(comments.id, commentId),
+          eq(comments.authorClerkUserId, userId),
+        ),
+      );
+  }
 
   revalidatePath(`/listings/${listingId}`);
 }

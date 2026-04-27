@@ -5,6 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
 import { listings } from "@/db/schema";
+import { isOrgAdmin } from "@/lib/auth/roles";
 import { listingScope, userCanAccessListing } from "./access";
 import {
   refreshListing,
@@ -48,6 +49,9 @@ export type RefreshAllActionResult =
 export async function refreshAllListingsAction(): Promise<RefreshAllActionResult> {
   const { userId, orgId } = await auth();
   if (!userId) return { ok: false, reason: "Not signed in" };
+  if (!(await isOrgAdmin())) {
+    return { ok: false, reason: "Admins only" };
+  }
 
   const scope = listingScope({ userId, orgId });
   if (!scope) return { ok: false, reason: "No active scope" };

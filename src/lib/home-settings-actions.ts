@@ -2,6 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+import { isOrgAdmin } from "@/lib/auth/roles";
 import { geocodeAddress } from "./geocode";
 import { setHome } from "./home-settings";
 
@@ -16,6 +17,9 @@ export async function setHomeAction(
 ): Promise<SetHomeState> {
   const { userId, orgId } = await auth();
   if (!userId) return { kind: "error", message: "You're not signed in." };
+  if (!(await isOrgAdmin())) {
+    return { kind: "error", message: "Admins only — ask an admin to set this." };
+  }
 
   const address = String(formData.get("address") ?? "").trim();
   if (!address) {
