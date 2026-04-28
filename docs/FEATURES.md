@@ -63,7 +63,7 @@ Find, edit, react to and comment on saved listings.
 
 ## Slice 2.5 — Bulk import
 
-- **Bulk import** — second tab on `/listings/new?mode=bulk` (single-URL is the default tab). Paste URLs as plain text or HTML with anchors; supported-host URLs are auto-extracted (regex match + URL parse + supported-host filter, deduped). Client iterates the list calling `importListingAction` per URL, showing per-row status (pending → processing → done/failed). Reuses `createListingFromUrl` end-to-end so dedup, parsing, and photo rehosting work the same as single-add.
+- **Bulk import** — second tab on `/listings/new?mode=bulk` (single-URL is the default tab). Paste URLs as plain text or HTML with anchors; supported-host URLs are auto-extracted (regex match + URL parse + supported-host filter, deduped). Client buckets URLs by host and runs a per-host worker pool (default 2 in flight per host, with a 0–500 ms random stagger before each request) calling `importListingAction` per URL. Per-row status (pending → processing → done/failed) updates as each worker finishes. Reuses `createListingFromUrl` end-to-end so dedup, parsing, and photo rehosting work the same as single-add. The `PER_HOST_CONCURRENCY` constant in `import-form.tsx` is the only knob — bumping past 3 starts risking PerimeterX blocks on Zillow specifically.
 
 ## Slice 2.6 — Auth-gated health endpoint
 

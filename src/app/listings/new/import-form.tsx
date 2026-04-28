@@ -16,6 +16,25 @@ const SUPPORTED_HOST_RE =
   /^(www\.)?(zillow\.com|apartments\.com|apartmentlist\.com)$/i;
 const TRAILING_PUNCTUATION_RE = /[.,;)\]}]+$/;
 
+// Concurrency is per-host so one site can't get hammered by all workers at
+// once. 2 is a conservative default; bumping past 3 starts risking temporary
+// blocks on Zillow specifically.
+const PER_HOST_CONCURRENCY = 2;
+// Random delay before each request to avoid coincident batches.
+const STAGGER_MAX_MS = 500;
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function extractUrls(text: string): string[] {
   const candidates = text.match(/https?:\/\/[^\s"'<>]+/gi) ?? [];
   const valid: string[] = [];
@@ -45,35 +64,53 @@ export function ImportForm() {
     setRunning(true);
     setRows(urls.map((u) => ({ url: u, status: { kind: "pending" } })));
 
-    for (let i = 0; i < urls.length; i++) {
+    type Entry = { url: string; index: number };
+    const byHost = new Map<string, Entry[]>();
+    urls.forEach((url, index) => {
+      const host = hostOf(url);
+      const arr = byHost.get(host) ?? [];
+      arr.push({ url, index });
+      byHost.set(host, arr);
+    });
+
+    const updateRow = (index: number, status: RowStatus) => {
       setRows((prev) =>
-        prev.map((r, j) =>
-          j === i ? { ...r, status: { kind: "processing" } } : r,
-        ),
+        prev.map((r, j) => (j === index ? { ...r, status } : r)),
       );
+    };
+
+    const processOne = async (entry: Entry) => {
+      updateRow(entry.index, { kind: "processing" });
+      await sleep(Math.random() * STAGGER_MAX_MS);
       try {
-        const result = await importListingAction(urls[i]);
-        setRows((prev) =>
-          prev.map((r, j) =>
-            j === i
-              ? {
-                  ...r,
-                  status: result.ok
-                    ? { kind: "done", id: result.id }
-                    : { kind: "failed", reason: result.reason },
-                }
-              : r,
-          ),
+        const result = await importListingAction(entry.url);
+        updateRow(
+          entry.index,
+          result.ok
+            ? { kind: "done", id: result.id }
+            : { kind: "failed", reason: result.reason },
         );
       } catch (err) {
         const reason = err instanceof Error ? err.message : String(err);
-        setRows((prev) =>
-          prev.map((r, j) =>
-            j === i ? { ...r, status: { kind: "failed", reason } } : r,
-          ),
-        );
+        updateRow(entry.index, { kind: "failed", reason });
       }
-    }
+    };
+
+    await Promise.all(
+      Array.from(byHost.values()).map(async (entries) => {
+        let cursor = 0;
+        const workerCount = Math.min(PER_HOST_CONCURRENCY, entries.length);
+        await Promise.all(
+          Array.from({ length: workerCount }, async () => {
+            while (true) {
+              const i = cursor++;
+              if (i >= entries.length) return;
+              await processOne(entries[i]);
+            }
+          }),
+        );
+      }),
+    );
 
     setRunning(false);
   }
