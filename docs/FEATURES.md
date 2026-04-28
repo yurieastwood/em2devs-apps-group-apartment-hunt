@@ -180,6 +180,7 @@ User-defined labels for organizing the hunt.
 - **Theme**: semantic tokens (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-primary`, `text-destructive`) — dark mode auto-flips via CSS vars on `prefers-color-scheme`.
 - **Layout**: shared `<AppHeader>` with brand link, "Add listing" link, Clerk `<OrganizationSwitcher />` and `<UserButton />` (rendered only when signed in).
 - **Privacy**: `app/robots.ts` disallows all crawlers; root metadata sets `noindex/nofollow`; `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex` response header on every route.
+- **Observability**: `<Analytics />` from `@vercel/analytics/next` and `<SpeedInsights />` from `@vercel/speed-insights/next` are mounted in the root layout. Both auto-instrument App Router navigation and Web Vitals; data appears in the Vercel project's Analytics + Speed Insights tabs. No env vars or extra config needed — Vercel's CDN serves the script and the `_vercel/insights/*` endpoint receives the beacons.
 
 ## Engineering notes
 

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider, Show } from "@clerk/nextjs";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AppHeader } from "@/components/app-header";
 import "./globals.css";
 
@@ -45,6 +47,8 @@ export default function RootLayout({
             <AppHeader />
           </Show>
           {children}
+          <Analytics />
+          <SpeedInsights />
         </body>
       </html>
     </ClerkProvider>
