@@ -25,6 +25,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type Params = Promise<{ id: string }>;
+type SearchParams = Promise<{ duplicate?: string }>;
 
 function fmtPrice(n: number | null): string | null {
   return n == null ? null : `$${n.toLocaleString("en-US")}/mo`;
@@ -84,8 +85,15 @@ function PhotoErrorsSection({ raw }: { raw: unknown }) {
   );
 }
 
-export default async function ListingDetailPage({ params }: { params: Params }) {
+export default async function ListingDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
   const { id } = await params;
+  const { duplicate } = await searchParams;
   const { userId, orgId } = await auth();
 
   const [listing] = await db
@@ -116,6 +124,12 @@ export default async function ListingDetailPage({ params }: { params: Params }) 
 
   return (
     <main className="flex-1 max-w-4xl mx-auto p-8 w-full">
+      {duplicate === "1" ? (
+        <div className="mb-4 rounded border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 p-3 text-sm">
+          This listing was already in your library. You&apos;re looking at the
+          existing entry.
+        </div>
+      ) : null}
       <header className="mb-6">
         <h1 className="text-2xl font-semibold">
           {listing.title ?? listing.address ?? "Untitled listing"}

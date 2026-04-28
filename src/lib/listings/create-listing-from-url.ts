@@ -7,6 +7,7 @@ import { parseApartmentList } from "../extract/parsers/apartmentlist";
 import { parseApartments } from "../extract/parsers/apartments";
 import { parseZillow } from "../extract/parsers/zillow";
 import type { ParsedListing } from "../extract/types";
+import { normalizeListingUrl } from "../url-normalize";
 import { rehostListingPhotos } from "./rehost-photos";
 
 type Parser = (url: string, html: string) => ParsedListing;
@@ -37,23 +38,19 @@ export async function createListingFromUrl(
   ownerClerkUserId: string,
   orgId: string | null,
 ): Promise<CreateListingResult> {
-  let parsedUrl: URL;
-  try {
-    parsedUrl = new URL(rawUrl.trim());
-  } catch {
+  const sourceUrl = normalizeListingUrl(rawUrl);
+  if (!sourceUrl) {
     return {
       ok: false,
       error: { kind: "invalid_url", message: "not a valid URL" },
     };
   }
 
-  const host = normalizeHost(parsedUrl.hostname);
+  const host = normalizeHost(new URL(sourceUrl).hostname);
   const parser = PARSERS[host];
   if (!parser) {
     return { ok: false, error: { kind: "unsupported_host", host } };
   }
-
-  const sourceUrl = parsedUrl.toString();
 
   const existing = await db
     .select({ id: listings.id })

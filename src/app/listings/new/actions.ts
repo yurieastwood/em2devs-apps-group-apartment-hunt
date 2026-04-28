@@ -44,7 +44,7 @@ export async function createListingAction(
     redirect(`/listings/${result.id}`);
   }
   if (result.error.kind === "duplicate") {
-    redirect(`/listings/${result.error.existingId}`);
+    redirect(`/listings/${result.error.existingId}?duplicate=1`);
   }
   return { kind: "error", message: messageFor(result.error) };
 }
