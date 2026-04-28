@@ -117,24 +117,22 @@ function extractSchools(component: Json): ParsedSchool[] {
   return out;
 }
 
-// ApartmentList signals availability via `listing.is_active` and the count of
-// floor plans with a non-zero price (`available_units` items where price > 0).
-// Treat the listing as unavailable when explicitly inactive or when no plan
-// has a real price.
-function extractAvailability(listing: Json): Availability {
-  if (listing == null || typeof listing !== "object") return "unknown";
-  const isActive = get(listing, "is_active");
-  if (isActive === false) return "unavailable";
-  const units = get(listing, "available_units");
-  if (Array.isArray(units)) {
-    const hasReal = units.some((u) => {
-      const p = asNum(get(u, "price"));
-      return p != null && p > 0;
-    });
-    if (!hasReal) return "unavailable";
-    return "available";
+// ApartmentList signals availability conservatively:
+// - "This property is no longer available" copy is rendered on the unavailable
+//   detail page; using it as the negative signal stays in sync with what the
+//   user sees.
+// - An empty `available_units` array means no advertised units at all.
+// - `listed_status === null` is the documented "actively listed" state for
+//   "ask for price" rentals; an empty/zero-priced unit list does NOT imply
+//   unavailability (those units are just contact-for-pricing).
+function extractAvailability(listing: Json, html: string): Availability {
+  if (/this property is no longer available/i.test(html)) {
+    return "unavailable";
   }
-  return "unknown";
+  if (listing == null || typeof listing !== "object") return "unknown";
+  const units = get(listing, "available_units");
+  if (Array.isArray(units) && units.length === 0) return "unavailable";
+  return "available";
 }
 
 export function parseApartmentList(
@@ -192,7 +190,7 @@ export function parseApartmentList(
     description:
       asString(get(listing, "description")) ??
       asString(get(ld, "description")),
-    availability: extractAvailability(listing),
+    availability: extractAvailability(listing, html),
     photos: extractPhotos(listing),
     schools: extractSchools(component),
     raw: { jsonLd: ld, apartmentLd: aptLd, listing, pickedPlan: plan },
