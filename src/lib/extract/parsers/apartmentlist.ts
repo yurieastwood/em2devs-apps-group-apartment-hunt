@@ -117,21 +117,35 @@ function extractSchools(component: Json): ParsedSchool[] {
   return out;
 }
 
-// ApartmentList signals availability conservatively:
-// - "This property is no longer available" copy is rendered on the unavailable
-//   detail page; using it as the negative signal stays in sync with what the
-//   user sees.
-// - An empty `available_units` array means no advertised units at all.
-// - `listed_status === null` is the documented "actively listed" state for
-//   "ask for price" rentals; an empty/zero-priced unit list does NOT imply
-//   unavailability (those units are just contact-for-pricing).
+// ApartmentList availability signals (verified against real samples):
+// - `availability_last_checked_at` is a recent ISO timestamp on currently-
+//   listed properties (including "ask for price" rentals where every unit's
+//   price is 0) and `null` on properties that show the "This property is no
+//   longer available" overlay. That overlay is rendered client-side, so the
+//   timestamp is the only reliable raw-HTML signal.
+// - To stay safe against scrape glitches that drop the timestamp, only treat
+//   a null timestamp as unavailable when no advertised unit has a real price.
+// - An empty `available_units` array also means unavailable.
+// - The "no longer available" page text is checked too as a defensive
+//   fallback in case ApartmentList ever ships it server-rendered.
 function extractAvailability(listing: Json, html: string): Availability {
   if (/this property is no longer available/i.test(html)) {
     return "unavailable";
   }
   if (listing == null || typeof listing !== "object") return "unknown";
+
   const units = get(listing, "available_units");
   if (Array.isArray(units) && units.length === 0) return "unavailable";
+
+  const lastChecked = get(listing, "availability_last_checked_at");
+  const hasRealPrice =
+    Array.isArray(units) &&
+    units.some((u) => {
+      const p = asNum(get(u, "price"));
+      return p != null && p > 0;
+    });
+  if (lastChecked == null && !hasRealPrice) return "unavailable";
+
   return "available";
 }
 
