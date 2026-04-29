@@ -36,6 +36,7 @@ export const listings = pgTable(
     description: text("description"),
     neighborhood: text("neighborhood"),
     units: jsonb("units"),
+    headlineLocked: boolean("headline_locked").notNull().default(false),
     availability: text("availability").notNull().default("unknown"),
     lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
     lastCheckError: text("last_check_error"),

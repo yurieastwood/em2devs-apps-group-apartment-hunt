@@ -213,7 +213,13 @@ export default async function ListingDetailPage({
       ) : null}
 
       <ListingUnitsSection
+        listingId={listing.id}
         units={listing.units}
+        headlineBeds={listing.bedrooms != null ? parseFloat(listing.bedrooms) : null}
+        headlineBaths={
+          listing.bathrooms != null ? parseFloat(listing.bathrooms) : null
+        }
+        headlineSqft={listing.squareFeet}
         headlinePrice={listing.priceUsd}
       />
 

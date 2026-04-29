@@ -150,20 +150,22 @@ function extractBuilding(nextData: Json): Json {
 }
 
 function extractFloorPlans(building: Json): ParsedUnit[] {
-  const candidates: Json[] = [
+  // Union all three candidate arrays — Zillow's pages sometimes split
+  // floorPlans (summary rows) from ungroupedUnits (every individual unit
+  // including those behind the "Show XX more units" button). Picking just
+  // one drops data; merging then deduping gives us everything.
+  const sources: Json[] = [
     get(building, "floorPlans"),
     get(building, "units"),
     get(building, "ungroupedUnits"),
   ];
-  let plans: Json[] = [];
-  for (const c of candidates) {
-    if (Array.isArray(c) && c.length > 0) {
-      plans = c;
-      break;
-    }
+  const allRaw: Json[] = [];
+  for (const c of sources) {
+    if (Array.isArray(c)) allRaw.push(...c);
   }
-  if (plans.length === 0) return [];
-  return plans
+  if (allRaw.length === 0) return [];
+
+  const mapped = allRaw
     .map((p): ParsedUnit => ({
       name:
         asString(get(p, "name")) ??
@@ -198,6 +200,19 @@ function extractFloorPlans(building: Json): ParsedUnit[] {
         u.price != null ||
         u.sqft != null,
     );
+
+  // Dedup by (beds, baths, sqft, price). Same plan + same price across the
+  // floorPlans summary and the per-unit list collapses to one row.
+  const seen = new Set<string>();
+  const distinct: ParsedUnit[] = [];
+  for (const u of mapped) {
+    const key = `${u.beds}|${u.baths}|${u.sqft}|${u.price}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    distinct.push(u);
+  }
+  distinct.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
+  return distinct;
 }
 
 // Headline = the unit shown in single-value columns (home page card).

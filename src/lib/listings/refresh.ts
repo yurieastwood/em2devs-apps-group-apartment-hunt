@@ -5,8 +5,62 @@ import { fetchListing } from "../extract/fetch-listing";
 import { parseApartmentList } from "../extract/parsers/apartmentlist";
 import { parseApartments } from "../extract/parsers/apartments";
 import { parseZillow } from "../extract/parsers/zillow";
-import type { Availability, ParsedListing } from "../extract/types";
+import type {
+  Availability,
+  ParsedListing,
+  ParsedUnit,
+} from "../extract/types";
 import { resolveNeighborhood } from "./resolve-neighborhood";
+
+type Headline = {
+  beds: number | null;
+  baths: number | null;
+  sqft: number | null;
+  price: number | null;
+  locked: boolean;
+};
+
+// For multi-unit listings, the displayed values on the home card depend on
+// whether the user has locked a specific floorplan. If locked, find a unit
+// matching the locked (beds, baths) and pick the cheapest matching unit;
+// price and sqft refresh while the floorplan choice persists. If the locked
+// floorplan no longer exists in the new units array, fall back to the
+// auto-pick the parser already computed and clear the lock.
+function computeHeadline(current: Listing, parsed: ParsedListing): Headline {
+  const units: ParsedUnit[] | null = parsed.units;
+  if (units && units.length > 0 && current.headlineLocked) {
+    const targetBeds =
+      current.bedrooms != null ? parseFloat(current.bedrooms) : null;
+    const targetBaths =
+      current.bathrooms != null ? parseFloat(current.bathrooms) : null;
+    if (targetBeds != null && targetBaths != null) {
+      const matched = units.filter(
+        (u) => u.beds === targetBeds && u.baths === targetBaths,
+      );
+      if (matched.length > 0) {
+        const cheapest = [...matched].sort(
+          (a, b) => (a.price ?? Infinity) - (b.price ?? Infinity),
+        )[0];
+        return {
+          beds: cheapest.beds,
+          baths: cheapest.baths,
+          sqft: cheapest.sqft,
+          price: cheapest.price,
+          locked: true,
+        };
+      }
+    }
+  }
+  // Auto-pick or single-home — the parser already populated single-value
+  // fields with the right values; lock clears.
+  return {
+    beds: parsed.bedrooms,
+    baths: parsed.bathrooms,
+    sqft: parsed.squareFeet,
+    price: parsed.priceUsd,
+    locked: false,
+  };
+}
 
 type Parser = (url: string, html: string) => ParsedListing;
 
@@ -115,7 +169,8 @@ export async function refreshListing(
   }
 
   const parsed = parser(current.sourceUrl, fetched.html);
-  const changes = diffListing(current, parsed.priceUsd, parsed.availability);
+  const headline = computeHeadline(current, parsed);
+  const changes = diffListing(current, headline.price, parsed.availability);
 
   const neighborhood = await resolveNeighborhood({
     parsedNeighborhood: parsed.neighborhood,
@@ -135,12 +190,22 @@ export async function refreshListing(
     );
   }
 
-  // Neighborhood is synced silently — not in the audit log per the
-  // price+availability-only policy. Parser improvements heal old rows.
+  // Neighborhood + units + headline columns are synced silently — not in the
+  // audit log per the price+availability-only policy. Parser improvements
+  // heal old rows. Multi-unit listings refresh beds/baths/sqft from the
+  // headline; single-home listings keep their stable values via the same
+  // path (computeHeadline returns parsed.* for them).
+  const isMultiUnit = parsed.units != null && parsed.units.length > 0;
   await db
     .update(listings)
     .set({
-      priceUsd: parsed.priceUsd,
+      bedrooms: isMultiUnit ? headline.beds?.toString() ?? null : current.bedrooms,
+      bathrooms: isMultiUnit
+        ? headline.baths?.toString() ?? null
+        : current.bathrooms,
+      squareFeet: isMultiUnit ? headline.sqft : current.squareFeet,
+      priceUsd: headline.price,
+      headlineLocked: headline.locked,
       availability: parsed.availability,
       neighborhood,
       units: parsed.units,
