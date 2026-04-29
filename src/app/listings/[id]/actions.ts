@@ -7,7 +7,6 @@ import { db } from "@/db/client";
 import { comments, listings, reactions } from "@/db/schema";
 import { isOrgAdmin } from "@/lib/auth/roles";
 import { listingScope, userCanAccessListing } from "@/lib/listings/access";
-import { shiftPrioritiesAfterDelete } from "@/lib/listings/priority";
 
 // Excludes soft-deleted listings so comment / reaction / edit / delete
 // actions on items in the trash silently no-op. The trash flow (restore /
@@ -49,14 +48,8 @@ export async function deleteListingAction(listingId: string): Promise<void> {
   const isOwner = target.ownerClerkUserId === userId;
   if (!isAdmin && !isOwner) return;
 
-  // Read the priority before clearing it so we can repack siblings.
-  const [oldRow] = await db
-    .select({ priority: listings.priority })
-    .from(listings)
-    .where(and(eq(listings.id, listingId), scope))
-    .limit(1);
-  if (!oldRow) return;
-
+  // Priority is cleared so a trashed listing doesn't show up in priority
+  // sorts; on restore the admin can re-assign it.
   await db
     .update(listings)
     .set({
@@ -65,8 +58,6 @@ export async function deleteListingAction(listingId: string): Promise<void> {
       updatedAt: new Date(),
     })
     .where(and(eq(listings.id, listingId), scope));
-
-  await shiftPrioritiesAfterDelete({ userId, orgId }, oldRow.priority);
 
   revalidatePath("/");
   revalidatePath("/listings/deleted");

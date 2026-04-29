@@ -1,4 +1,4 @@
-import { and, eq, gt, gte, isNotNull, lt, lte, sql } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { listings } from "@/db/schema";
 import {
@@ -9,9 +9,12 @@ import {
 
 export type SetPriorityResult = { ok: true } | { ok: false; reason: string };
 
-// Contiguous priority within scope: existing prioritized listings have
-// priorities 1..N. Setting one to a slot in [1..N+1] (when adding) or
-// [1..N] (when moving) shifts the others to keep the sequence packed.
+// Free-form priority with collision shift: any positive integer is valid;
+// null means unprioritized. Setting priority P on a listing shifts every
+// other listing in the same scope whose priority is >= P up by 1, then
+// writes P. So if A=3 and you set L=3, A becomes 4 (and any further
+// collisions cascade automatically since the shift is a single bulk
+// update). Gaps are allowed; you can pick any number.
 export async function setListingPriority(
   scope: AuthCtx,
   listingId: string,
@@ -32,31 +35,30 @@ export async function setListingPriority(
   if (!userCanAccessListing(target, scope)) {
     return { ok: false, reason: "No access" };
   }
+  if (target.priority === newPriority) return { ok: true };
 
-  const oldPriority = target.priority;
-  if (oldPriority === newPriority) return { ok: true };
+  if (newPriority !== null) {
+    if (!Number.isInteger(newPriority) || newPriority < 1) {
+      return { ok: false, reason: "Priority must be a positive integer" };
+    }
+  }
 
   const where = listingScope(scope);
   if (!where) return { ok: false, reason: "No active scope" };
 
-  // Validate range
-  if (newPriority !== null) {
-    const [{ count: prioritizedCount }] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(listings)
-      .where(and(where, isNotNull(listings.priority)));
-    const upperBound =
-      oldPriority === null ? prioritizedCount + 1 : prioritizedCount;
-    if (newPriority < 1 || newPriority > upperBound) {
-      return {
-        ok: false,
-        reason: `Priority must be between 1 and ${upperBound}`,
-      };
-    }
+  // 1) Vacate this listing's slot so the bulk shift below doesn't double-
+  //    count it.
+  if (target.priority !== null) {
+    await db
+      .update(listings)
+      .set({ priority: null })
+      .where(eq(listings.id, listingId));
   }
 
-  // Cases: null→P, P→null, P→P
-  if (oldPriority === null && newPriority !== null) {
+  // 2) Shift every other listing in scope with priority >= newPriority up
+  //    by 1 — resolves the collision and any chained collisions in one go.
+  // 3) Write the new priority.
+  if (newPriority !== null) {
     await db
       .update(listings)
       .set({ priority: sql`${listings.priority} + 1` })
@@ -65,57 +67,7 @@ export async function setListingPriority(
       .update(listings)
       .set({ priority: newPriority })
       .where(eq(listings.id, listingId));
-  } else if (oldPriority !== null && newPriority === null) {
-    await db
-      .update(listings)
-      .set({ priority: sql`${listings.priority} - 1` })
-      .where(and(where, gt(listings.priority, oldPriority)));
-    await db
-      .update(listings)
-      .set({ priority: null })
-      .where(eq(listings.id, listingId));
-  } else if (oldPriority !== null && newPriority !== null) {
-    if (newPriority < oldPriority) {
-      await db
-        .update(listings)
-        .set({ priority: sql`${listings.priority} + 1` })
-        .where(
-          and(
-            where,
-            gte(listings.priority, newPriority),
-            lt(listings.priority, oldPriority),
-          ),
-        );
-    } else {
-      await db
-        .update(listings)
-        .set({ priority: sql`${listings.priority} - 1` })
-        .where(
-          and(
-            where,
-            gt(listings.priority, oldPriority),
-            lte(listings.priority, newPriority),
-          ),
-        );
-    }
-    await db
-      .update(listings)
-      .set({ priority: newPriority })
-      .where(eq(listings.id, listingId));
   }
 
   return { ok: true };
-}
-
-export async function shiftPrioritiesAfterDelete(
-  scope: AuthCtx,
-  removedPriority: number | null,
-): Promise<void> {
-  if (removedPriority === null) return;
-  const where = listingScope(scope);
-  if (!where) return;
-  await db
-    .update(listings)
-    .set({ priority: sql`${listings.priority} - 1` })
-    .where(and(where, gt(listings.priority, removedPriority)));
 }
