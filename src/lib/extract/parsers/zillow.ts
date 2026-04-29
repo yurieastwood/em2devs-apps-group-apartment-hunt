@@ -8,8 +8,10 @@ import type {
 import {
   asNum,
   asString,
+  dedupUnits,
   extractFirstJsonLd,
   get,
+  pickHeadlineUnit,
   safeJsonParse,
   type Json,
 } from "./util";
@@ -201,40 +203,7 @@ function extractFloorPlans(building: Json): ParsedUnit[] {
         u.sqft != null,
     );
 
-  // Dedup by (beds, baths, sqft, price). Same plan + same price across the
-  // floorPlans summary and the per-unit list collapses to one row.
-  const seen = new Set<string>();
-  const distinct: ParsedUnit[] = [];
-  for (const u of mapped) {
-    const key = `${u.beds}|${u.baths}|${u.sqft}|${u.price}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    distinct.push(u);
-  }
-  distinct.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
-  return distinct;
-}
-
-// Headline = the unit shown in single-value columns (home page card).
-// Priority: 3BR + 2BA with a real price → cheapest. Then: cheapest with a
-// real price. Last resort: first unit.
-function pickHeadlineUnit(units: ParsedUnit[]): ParsedUnit | null {
-  if (units.length === 0) return null;
-  const target = units.filter(
-    (u) => u.beds === 3 && u.baths === 2 && u.price != null && u.price > 0,
-  );
-  if (target.length > 0) {
-    return [...target].sort(
-      (a, b) => (a.price ?? Infinity) - (b.price ?? Infinity),
-    )[0];
-  }
-  const priced = units.filter((u) => u.price != null && u.price > 0);
-  if (priced.length > 0) {
-    return [...priced].sort(
-      (a, b) => (a.price ?? Infinity) - (b.price ?? Infinity),
-    )[0];
-  }
-  return units[0];
+  return dedupUnits(mapped);
 }
 
 function extractBuildingPhotos(building: Json): ListingPhoto[] {

@@ -3,12 +3,15 @@ import type {
   ListingPhoto,
   ParsedListing,
   ParsedSchool,
+  ParsedUnit,
 } from "../types";
 import {
   asNum,
   asString,
+  dedupUnits,
   extractFirstJsonLd,
   get,
+  pickHeadlineUnit,
   safeJsonParse,
   type Json,
 } from "./util";
@@ -60,34 +63,30 @@ function extractPhotos(listing: Json): ListingPhoto[] {
   return photos;
 }
 
-// ApartmentList listings often have many "available_units" (floor plans),
-// some with price > 0 (actually rentable now) and many with price = 0
-// (placeholder / coming soon). Each plan has its own bed / bath / price /
-// sqft, so we pick a single plan and source all four fields from it to
-// keep them consistent.
-//
-// Strategy: prefer the plan whose price matches `available_units[0].price`
-// when that price is non-zero (the same plan ApartmentList usually shows
-// in the header — empirically the one we'd been picking before). Fall
-// back to the cheapest available plan, then to the very first plan.
-function pickFloorPlan(listing: Json): Json {
+// Map each available_units entry to the shared ParsedUnit shape, then
+// dedup + sort. Note ApartmentList uses singular `bed` / `bath` keys
+// (Zillow uses `beds` / `baths`).
+function extractUnits(listing: Json): ParsedUnit[] {
   const all = get(listing, "available_units");
-  if (!Array.isArray(all) || all.length === 0) return null;
-
-  const headPrice = asNum(get(all[0], "price"));
-  if (headPrice != null && headPrice > 0) return all[0];
-
-  const available = all.filter((u) => {
-    const p = asNum(get(u, "price"));
-    return p != null && p > 0;
-  });
-  if (available.length === 0) return all[0];
-
-  return available.reduce<Json>((cheapest, u) => {
-    const cp = asNum(get(cheapest, "price")) ?? Number.POSITIVE_INFINITY;
-    const up = asNum(get(u, "price")) ?? Number.POSITIVE_INFINITY;
-    return up < cp ? u : cheapest;
-  }, available[0]);
+  if (!Array.isArray(all) || all.length === 0) return [];
+  const mapped = all
+    .map((u): ParsedUnit => ({
+      name: asString(get(u, "name")) ?? asString(get(u, "floor_plan_name")),
+      beds: asNum(get(u, "bed")),
+      baths: asNum(get(u, "bath")),
+      sqft: asNum(get(u, "sqft")),
+      price: asNum(get(u, "price")),
+      availableFrom: asString(get(u, "availability")),
+      photoUrl: asString(get(u, "image_url")),
+    }))
+    .filter(
+      (u) =>
+        u.beds != null ||
+        u.baths != null ||
+        u.price != null ||
+        u.sqft != null,
+    );
+  return dedupUnits(mapped);
 }
 
 function extractSchools(component: Json): ParsedSchool[] {
@@ -165,10 +164,8 @@ export function parseApartmentList(
   const component = get(nextData, "props", "pageProps", "component");
   const listing = get(component, "listing");
 
-  const plan = pickFloorPlan(listing);
-
-  const planSqft = asNum(get(plan, "sqft"));
-  const squareFeet = planSqft != null && planSqft > 0 ? planSqft : null;
+  const units = extractUnits(listing);
+  const headline = pickHeadlineUnit(units);
 
   return {
     sourceUrl,
@@ -193,22 +190,18 @@ export function parseApartmentList(
       asString(get(listing, "zip")) ?? asString(get(ldAddr, "postalCode")),
     latitude: asNum(get(listing, "lat")) ?? asNum(get(ldGeo, "latitude")),
     longitude: asNum(get(listing, "lon")) ?? asNum(get(ldGeo, "longitude")),
-    bedrooms:
-      asNum(get(plan, "bed")) ??
-      asNum(get(aptLd, "numberOfBedrooms")),
-    bathrooms:
-      asNum(get(plan, "bath")) ??
-      asNum(get(aptLd, "numberOfBathroomsTotal")),
-    squareFeet,
-    priceUsd: asNum(get(plan, "price")),
+    bedrooms: headline?.beds ?? asNum(get(aptLd, "numberOfBedrooms")),
+    bathrooms: headline?.baths ?? asNum(get(aptLd, "numberOfBathroomsTotal")),
+    squareFeet: headline?.sqft ?? null,
+    priceUsd: headline?.price ?? null,
     description:
       asString(get(listing, "description")) ??
       asString(get(ld, "description")),
     neighborhood: asString(get(listing, "neighborhood")),
     availability: extractAvailability(listing, html),
-    units: null,
+    units: units.length > 1 ? units : null,
     photos: extractPhotos(listing),
     schools: extractSchools(component),
-    raw: { jsonLd: ld, apartmentLd: aptLd, listing, pickedPlan: plan },
+    raw: { jsonLd: ld, apartmentLd: aptLd, listing, headline },
   };
 }
