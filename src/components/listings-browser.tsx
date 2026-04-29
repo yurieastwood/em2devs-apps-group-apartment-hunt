@@ -788,6 +788,7 @@ function PriceGroup({
   value: number | null;
   onChange: (v: number | null) => void;
 }) {
+  const inputValue = value == null ? "" : String(value);
   return (
     <div className="flex items-center gap-2">
       <span className="text-muted-foreground">Max price</span>
@@ -811,6 +812,27 @@ function PriceGroup({
           );
         })}
       </div>
+      <label className="flex items-center gap-1">
+        <span className="text-muted-foreground">$</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          step={50}
+          value={inputValue}
+          onChange={(e) => {
+            const raw = e.target.value;
+            if (raw === "") {
+              onChange(null);
+              return;
+            }
+            const n = Number(raw);
+            onChange(Number.isFinite(n) && n > 0 ? Math.trunc(n) : null);
+          }}
+          placeholder="Custom"
+          className="w-20 border border-border bg-input-background text-foreground rounded px-1 py-0.5 text-xs"
+        />
+      </label>
     </div>
   );
 }
