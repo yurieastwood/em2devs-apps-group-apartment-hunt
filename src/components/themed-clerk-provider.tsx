@@ -43,6 +43,30 @@ export function ThemedClerkProvider({
           colorPrimary: "var(--primary)",
           colorDanger: "var(--destructive)",
         },
+        elements: {
+          // Trigger buttons sit in our header, not a Clerk-styled container,
+          // so Clerk's baseTheme doesn't reach the trigger text. Force the
+          // page's --foreground / --muted-foreground vars (which auto-flip
+          // with prefers-color-scheme).
+          organizationSwitcherTrigger: {
+            color: "var(--foreground)",
+          },
+          organizationPreviewMainIdentifier: {
+            color: "var(--foreground)",
+          },
+          organizationPreviewSecondaryIdentifier: {
+            color: "var(--muted-foreground)",
+          },
+          userButtonBox: {
+            color: "var(--foreground)",
+          },
+          userPreviewMainIdentifier: {
+            color: "var(--foreground)",
+          },
+          userPreviewSecondaryIdentifier: {
+            color: "var(--muted-foreground)",
+          },
+        },
       }}
     >
       {children}
