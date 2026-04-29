@@ -6,7 +6,10 @@ import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { DeleteListingButton } from "./delete-listing-button";
 import { PriorityEditor } from "./priority-editor";
-import { fmtTransitDuration } from "@/lib/transit-format";
+import {
+  fmtTransitDuration,
+  googleMapsTransitDirectionsUrl,
+} from "@/lib/transit-format";
 import { labelChipClasses } from "@/lib/label-color";
 
 export type ListingListRowPoi = {
@@ -14,6 +17,8 @@ export type ListingListRowPoi = {
   label: string;
   durationSeconds: number | null;
   distanceMeters: number | null;
+  poiLat: number | null;
+  poiLng: number | null;
 };
 
 export type ListingListRowLabel = {
@@ -37,6 +42,8 @@ export type ListingListRowProps = {
   priority?: number | null;
   availability?: string;
   neighborhood?: string | null;
+  listingLat?: number | null;
+  listingLng?: number | null;
 };
 
 export function ListingListRow({
@@ -54,6 +61,8 @@ export function ListingListRow({
   priority,
   availability,
   neighborhood,
+  listingLat,
+  listingLng,
 }: ListingListRowProps) {
   const [open, setOpen] = useState(false);
 
@@ -94,11 +103,28 @@ export function ListingListRow({
           </p>
           {poiDistances && poiDistances.length > 0 ? (
             <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
-              {poiDistances.map((d) => (
-                <span key={d.poiId}>
-                  🚌 {d.label}: {fmtTransitDuration(d.durationSeconds) ?? "—"}
-                </span>
-              ))}
+              {poiDistances.map((d) => {
+                const url = googleMapsTransitDirectionsUrl(
+                  { lat: listingLat ?? null, lng: listingLng ?? null },
+                  { lat: d.poiLat, lng: d.poiLng },
+                );
+                const text = `🚌 ${d.label}: ${
+                  fmtTransitDuration(d.durationSeconds) ?? "—"
+                }`;
+                if (!url) return <span key={d.poiId}>{text}</span>;
+                return (
+                  <a
+                    key={d.poiId}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline hover:text-foreground"
+                    title="Open transit directions in Google Maps"
+                  >
+                    {text}
+                  </a>
+                );
+              })}
             </p>
           ) : null}
           {labels && labels.length > 0 ? (

@@ -280,7 +280,11 @@ export default async function ListingDetailPage({
         <ReactionsBar listingId={listing.id} />
       </div>
 
-      <ListingPoiDistances listingId={listing.id} />
+      <ListingPoiDistances
+        listingId={listing.id}
+        listingLat={listing.latitude ? parseFloat(listing.latitude) : null}
+        listingLng={listing.longitude ? parseFloat(listing.longitude) : null}
+      />
 
       <NearbySchools listingId={listing.id} />
 

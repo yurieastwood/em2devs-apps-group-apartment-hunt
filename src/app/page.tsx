@@ -180,7 +180,16 @@ export default async function HomePage() {
   const labelsByListing: Map<string, Label[]> =
     ids.length === 0 ? new Map() : await getLabelsForListings(ids);
 
-  const poiLabelMap = new Map(userPois.map((p) => [p.id, p.label]));
+  const poiInfoMap = new Map(
+    userPois.map((p) => [
+      p.id,
+      {
+        label: p.label,
+        lat: parseFloat(p.lat),
+        lng: parseFloat(p.lng),
+      },
+    ]),
+  );
   const distMap = new Map<
     string,
     Array<{
@@ -188,15 +197,20 @@ export default async function HomePage() {
       label: string;
       durationSeconds: number | null;
       distanceMeters: number | null;
+      poiLat: number | null;
+      poiLng: number | null;
     }>
   >();
   for (const r of distanceRows) {
     const arr = distMap.get(r.listingId) ?? [];
+    const info = poiInfoMap.get(r.poiId);
     arr.push({
       poiId: r.poiId,
-      label: poiLabelMap.get(r.poiId) ?? "POI",
+      label: info?.label ?? "POI",
       durationSeconds: r.durationSeconds,
       distanceMeters: r.distanceMeters,
+      poiLat: info?.lat ?? null,
+      poiLng: info?.lng ?? null,
     });
     distMap.set(r.listingId, arr);
   }

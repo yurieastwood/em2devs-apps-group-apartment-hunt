@@ -6,7 +6,10 @@ import { DeleteListingButton } from "@/components/delete-listing-button";
 import { HomeMap, type HomeMapProps } from "@/components/home-map";
 import { ListingListRow } from "@/components/listing-list-row";
 import { PriorityEditor } from "@/components/priority-editor";
-import { fmtTransitDuration } from "@/lib/transit-format";
+import {
+  fmtTransitDuration,
+  googleMapsTransitDirectionsUrl,
+} from "@/lib/transit-format";
 import { labelChipClasses } from "@/lib/label-color";
 
 export type HomePoiDistance = {
@@ -14,6 +17,8 @@ export type HomePoiDistance = {
   label: string;
   durationSeconds: number | null;
   distanceMeters: number | null;
+  poiLat: number | null;
+  poiLng: number | null;
 };
 
 export type HomeLabel = {
@@ -691,12 +696,35 @@ function CardsView({ listings }: { listings: HomeListingItem[] }) {
               </p>
               {l.poiDistances.length > 0 ? (
                 <p className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-                  {l.poiDistances.map((d) => (
-                    <span key={d.poiId}>
-                      🚌 {d.label}:{" "}
-                      {fmtTransitDuration(d.durationSeconds) ?? "—"}
-                    </span>
-                  ))}
+                  {l.poiDistances.map((d) => {
+                    const url = googleMapsTransitDirectionsUrl(
+                      { lat: l.latitude, lng: l.longitude },
+                      { lat: d.poiLat, lng: d.poiLng },
+                    );
+                    const text = `🚌 ${d.label}: ${
+                      fmtTransitDuration(d.durationSeconds) ?? "—"
+                    }`;
+                    if (!url) return <span key={d.poiId}>{text}</span>;
+                    return (
+                      <button
+                        key={d.poiId}
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          window.open(
+                            url,
+                            "_blank",
+                            "noopener,noreferrer",
+                          );
+                        }}
+                        className="hover:underline hover:text-foreground"
+                        title="Open transit directions in Google Maps"
+                      >
+                        {text}
+                      </button>
+                    );
+                  })}
                 </p>
               ) : null}
               <LabelChips labels={l.labels} />
@@ -742,6 +770,8 @@ function ListView({ listings }: { listings: HomeListingItem[] }) {
           priority={l.priority}
           availability={l.availability}
           neighborhood={l.neighborhood}
+          listingLat={l.latitude}
+          listingLng={l.longitude}
         />
       ))}
     </ul>
