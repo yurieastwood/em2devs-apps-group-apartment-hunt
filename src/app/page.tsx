@@ -21,7 +21,7 @@ import {
   listLabelsInScope,
 } from "@/lib/listings/labels";
 import { ViewModeToggle } from "@/components/view-mode-toggle";
-import { HomeMap, type HomeMapProps } from "@/components/home-map";
+import { type HomeMapProps } from "@/components/home-map";
 import { HomeSettingsForm } from "@/components/home-settings-form";
 import { PoisSection } from "@/components/pois-section";
 import { AuditSizeWarning } from "@/components/audit-size-warning";
@@ -213,6 +213,8 @@ export default async function HomePage() {
       priceUsd: l.priceUsd,
       priority: l.priority,
       availability: l.availability,
+      latitude: l.latitude ? parseFloat(l.latitude) : null,
+      longitude: l.longitude ? parseFloat(l.longitude) : null,
       nearestPkRating: nearestPkRatingMap.get(l.id) ?? null,
       poiDistances: distMap.get(l.id) ?? [],
       labels: (labelsByListing.get(l.id) ?? []).map((lbl) => ({
@@ -253,7 +255,6 @@ export default async function HomePage() {
           </p>
         ) : null}
         <PoisSection canEdit={isAdmin} />
-        <HomeMap home={mapData.home} pins={mapData.pins} pois={poiPins} />
       </section>
 
       <AuditSizeWarning />
@@ -300,6 +301,8 @@ export default async function HomePage() {
             name: l.name,
             color: l.color,
           }))}
+          home={mapData.home}
+          pois={poiPins}
         />
       )}
     </main>

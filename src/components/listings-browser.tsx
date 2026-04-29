@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { DeleteListingButton } from "@/components/delete-listing-button";
+import { HomeMap, type HomeMapProps } from "@/components/home-map";
 import { ListingListRow } from "@/components/listing-list-row";
 import { PriorityEditor } from "@/components/priority-editor";
 import { fmtTransitDuration } from "@/lib/transit-format";
@@ -33,6 +34,8 @@ export type HomeListingItem = {
   priority: number | null;
   nearestPkRating: number | null;
   availability: string;
+  latitude: number | null;
+  longitude: number | null;
   coverUrl: string | null;
   canDelete: boolean;
   createdAt: string;
@@ -147,10 +150,14 @@ export function ListingsBrowser({
   listings,
   viewMode,
   scopeLabels,
+  home,
+  pois,
 }: {
   listings: HomeListingItem[];
   viewMode: "cards" | "list";
   scopeLabels: HomeLabel[];
+  home: HomeMapProps["home"];
+  pois: HomeMapProps["pois"];
 }) {
   const [sortCriteria, setSortCriteria] =
     useState<SortCriterion[]>(DEFAULT_SORT);
@@ -273,8 +280,29 @@ export function ListingsBrowser({
     (f) => !sortCriteria.some((c) => c.field === f),
   );
 
+  const visiblePins: HomeMapProps["pins"] = useMemo(
+    () =>
+      visible
+        .filter(
+          (l): l is HomeListingItem & { latitude: number; longitude: number } =>
+            l.latitude != null && l.longitude != null,
+        )
+        .map((l) => ({
+          id: l.id,
+          lat: l.latitude,
+          lng: l.longitude,
+          label: l.address ?? l.title ?? "Listing",
+          href: `/listings/${l.id}`,
+        })),
+    [visible],
+  );
+
   return (
     <div>
+      <div className="mb-6">
+        <HomeMap home={home} pins={visiblePins} pois={pois} />
+      </div>
+
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-xs">
         <SortBuilder
           criteria={sortCriteria}
