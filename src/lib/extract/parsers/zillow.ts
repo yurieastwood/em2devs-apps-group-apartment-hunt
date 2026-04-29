@@ -54,9 +54,14 @@ function pickLargestJpeg(mix: Json): ListingPhoto | null {
   return best;
 }
 
-function extractSchools(property: Json): ParsedSchool[] {
-  const list = get(property, "schools");
-  if (!Array.isArray(list)) return [];
+function extractSchools(source: Json): ParsedSchool[] {
+  // Single-home (zpid) listings store schools at `property.schools`;
+  // building (`/apartments/.../<lnId>/`) listings store them at
+  // `building.assignedSchools`. Field shapes inside each entry are the
+  // same.
+  const arr = get(source, "schools") ?? get(source, "assignedSchools");
+  const list = Array.isArray(arr) ? arr : [];
+  if (list.length === 0) return [];
   const out: ParsedSchool[] = [];
   for (const s of list) {
     const name = asString(get(s, "name"));

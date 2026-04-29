@@ -1,6 +1,11 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { listingChanges, listings, type Listing } from "@/db/schema";
+import {
+  listingChanges,
+  listingSchools,
+  listings,
+  type Listing,
+} from "@/db/schema";
 import { fetchListing } from "../extract/fetch-listing";
 import { parseApartmentList } from "../extract/parsers/apartmentlist";
 import { parseApartments } from "../extract/parsers/apartments";
@@ -213,6 +218,33 @@ export async function refreshListing(
       lastCheckError: null,
     })
     .where(eq(listings.id, listingId));
+
+  // Re-sync schools so parser improvements heal existing rows. Same audit
+  // policy as neighborhood / units — silent, no listing_changes row. Only
+  // touch the table when the parser actually produced schools, so a
+  // transient parse miss doesn't wipe the existing list.
+  if (parsed.schools.length > 0) {
+    await db
+      .delete(listingSchools)
+      .where(eq(listingSchools.listingId, listingId));
+    await db.insert(listingSchools).values(
+      parsed.schools.map((s, i) => ({
+        listingId,
+        sortOrder: i,
+        name: s.name,
+        schoolType: s.schoolType ?? null,
+        level: s.level ?? null,
+        gradeRange: s.gradeRange ?? null,
+        rating: s.rating ?? null,
+        distanceMiles: s.distanceMiles?.toString() ?? null,
+        greatSchoolsUrl: s.greatSchoolsUrl ?? null,
+        enrollment: s.enrollment ?? null,
+        isAssigned: s.isAssigned ?? null,
+        lat: s.lat?.toString() ?? null,
+        lng: s.lng?.toString() ?? null,
+      })),
+    );
+  }
 
   return { kind: "ok", changes: changes.length, listingId };
 }
