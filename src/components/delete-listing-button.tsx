@@ -9,7 +9,7 @@ export function DeleteListingButton({
   navigateTo,
   className,
   label = "Delete listing",
-  confirmText = "Delete this listing? Photos will be removed from storage. This can't be undone.",
+  confirmText = "Move this listing to Trash? An admin can restore it from the Trash page.",
 }: {
   listingId: string;
   navigateTo?: string;
