@@ -65,3 +65,23 @@ body {
 .gm-style .gm-ui-hover-effect > span {
   background-color: var(--foreground) !important;
 }
+
+/* Google Translate widget chrome — hide the bundled UI, banner, and inline
+   tooltip so our custom EN/PT toggle is the only visible affordance. The
+   widget's <iframe> banner pushes the body down by 40px when active; reset
+   the offset Google sets on <body>. */
+.goog-te-banner-frame.skiptranslate,
+.goog-te-gadget-icon,
+#goog-gt-tt {
+  display: none !important;
+}
+
+body {
+  top: 0 !important;
+}
+
+/* Strip the highlight Google overlays on translated runs of text. */
+.goog-text-highlight {
+  background: transparent !important;
+  box-shadow: none !important;
+}
