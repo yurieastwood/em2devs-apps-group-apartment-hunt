@@ -2,6 +2,7 @@ import Link from "next/link";
 import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { isOrgAdmin } from "@/lib/auth/roles";
+import { GoogleTranslate } from "./google-translate";
 
 async function getActiveOrgName(orgId: string | null | undefined): Promise<string | null> {
   if (!orgId) return null;
@@ -46,6 +47,7 @@ export async function AppHeader() {
           ) : orgName ? (
             <span className="text-sm text-muted-foreground">{orgName}</span>
           ) : null}
+          <GoogleTranslate />
           <UserButton />
         </nav>
       </div>
