@@ -34,6 +34,7 @@ export const listings = pgTable(
     priceUsd: integer("price_usd"),
     priority: integer("priority"),
     description: text("description"),
+    neighborhood: text("neighborhood"),
     availability: text("availability").notNull().default("unknown"),
     lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
     lastCheckError: text("last_check_error"),

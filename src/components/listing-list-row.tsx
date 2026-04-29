@@ -36,6 +36,7 @@ export type ListingListRowProps = {
   labels?: ListingListRowLabel[];
   priority?: number | null;
   availability?: string;
+  neighborhood?: string | null;
 };
 
 export function ListingListRow({
@@ -52,6 +53,7 @@ export function ListingListRow({
   labels,
   priority,
   availability,
+  neighborhood,
 }: ListingListRowProps) {
   const [open, setOpen] = useState(false);
 
@@ -73,6 +75,7 @@ export function ListingListRow({
             ) : null}
           </div>
           <p className="text-sm text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+            {neighborhood ? <span>📍 {neighborhood}</span> : null}
             {bedrooms ? <span>{bedrooms} BR</span> : null}
             {bathrooms ? <span>{bathrooms} BA</span> : null}
             {squareFeet ? (

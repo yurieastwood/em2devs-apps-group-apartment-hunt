@@ -37,6 +37,7 @@ export type ParsedListing = {
   squareFeet: number | null;
   priceUsd: number | null;
   description: string | null;
+  neighborhood: string | null;
   availability: Availability;
   photos: ListingPhoto[];
   schools: ParsedSchool[];

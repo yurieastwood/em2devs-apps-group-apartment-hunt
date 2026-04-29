@@ -206,6 +206,7 @@ export default async function HomePage() {
       id: l.id,
       title: l.title,
       address: l.address,
+      neighborhood: l.neighborhood,
       bedrooms: l.bedrooms,
       bathrooms: l.bathrooms,
       squareFeet: l.squareFeet,

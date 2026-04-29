@@ -25,6 +25,7 @@ export type HomeListingItem = {
   id: string;
   title: string | null;
   address: string | null;
+  neighborhood: string | null;
   bedrooms: string | null;
   bathrooms: string | null;
   squareFeet: number | null;
@@ -158,7 +159,18 @@ export function ListingsBrowser({
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [minPkRating, setMinPkRating] = useState(0);
   const [activeLabels, setActiveLabels] = useState<Set<string>>(new Set());
+  const [activeNeighborhoods, setActiveNeighborhoods] = useState<Set<string>>(
+    new Set(),
+  );
   const [hideUnavailable, setHideUnavailable] = useState(false);
+
+  const allNeighborhoods = useMemo(() => {
+    const set = new Set<string>();
+    for (const l of listings) {
+      if (l.neighborhood) set.add(l.neighborhood);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [listings]);
 
   const visible = useMemo(() => {
     const filtered = listings.filter((l) => {
@@ -183,6 +195,11 @@ export function ListingsBrowser({
         if (!hit) return false;
       }
       if (hideUnavailable && l.availability === "unavailable") return false;
+      if (activeNeighborhoods.size > 0) {
+        if (!l.neighborhood || !activeNeighborhoods.has(l.neighborhood)) {
+          return false;
+        }
+      }
       return true;
     });
 
@@ -199,6 +216,7 @@ export function ListingsBrowser({
     maxPrice,
     minPkRating,
     activeLabels,
+    activeNeighborhoods,
     hideUnavailable,
   ]);
 
@@ -207,6 +225,15 @@ export function ListingsBrowser({
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleNeighborhood(name: string) {
+    setActiveNeighborhoods((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
       return next;
     });
   }
@@ -281,6 +308,13 @@ export function ListingsBrowser({
             labels={scopeLabels}
             active={activeLabels}
             onToggle={toggleLabel}
+          />
+        ) : null}
+        {allNeighborhoods.length > 0 ? (
+          <NeighborhoodFilterGroup
+            neighborhoods={allNeighborhoods}
+            active={activeNeighborhoods}
+            onToggle={toggleNeighborhood}
           />
         ) : null}
         <button
@@ -462,6 +496,42 @@ function LabelFilterGroup({
   );
 }
 
+function NeighborhoodFilterGroup({
+  neighborhoods,
+  active,
+  onToggle,
+}: {
+  neighborhoods: string[];
+  active: Set<string>;
+  onToggle: (name: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-muted-foreground">Neighborhood</span>
+      <div className="flex flex-wrap gap-1">
+        {neighborhoods.map((n) => {
+          const on = active.has(n);
+          return (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onToggle(n)}
+              aria-pressed={on}
+              className={`px-2 py-0.5 rounded border text-xs transition-opacity ${
+                on
+                  ? "bg-primary/15 border-primary text-foreground"
+                  : "border-border hover:bg-muted text-muted-foreground"
+              }`}
+            >
+              {n}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function UnavailableBadge({ availability }: { availability: string }) {
   if (availability !== "unavailable") return null;
   return (
@@ -518,6 +588,11 @@ function CardsView({ listings }: { listings: HomeListingItem[] }) {
                 </p>
                 <UnavailableBadge availability={l.availability} />
               </div>
+              {l.neighborhood ? (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  📍 {l.neighborhood}
+                </p>
+              ) : null}
               <p className="text-sm text-muted-foreground mt-1 flex flex-wrap gap-x-3">
                 {l.bedrooms ? <span>{l.bedrooms} BR</span> : null}
                 {l.bathrooms ? <span>{l.bathrooms} BA</span> : null}
@@ -587,6 +662,7 @@ function ListView({ listings }: { listings: HomeListingItem[] }) {
           labels={l.labels}
           priority={l.priority}
           availability={l.availability}
+          neighborhood={l.neighborhood}
         />
       ))}
     </ul>

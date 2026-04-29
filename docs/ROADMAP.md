@@ -77,6 +77,10 @@ Clerk Organization roles gate write features. Admins can add/edit/delete listing
 
 Each POI can pick a pin color from an 8-color palette on its add/edit form. Maps render the chosen color via Google's `<Pin background>`, so it stays cross-platform consistent. Existing POIs default to green (the previous look).
 
+## Slice 3.8 — Neighborhood ✅
+
+Per-listing neighborhood extracted from each source's parser, displayed under the address on cards / list rows / detail page, and filterable on the home page via a multi-select chip group.
+
 ---
 
 ## Backlog 💡
@@ -106,6 +110,7 @@ Grouped by priority. Add new items under whichever group fits.
 
 - Clerk APIKeys (per-user / per-machine API keys)
 - Google Places API for broader school coverage
+- Google Places API as a neighborhood fallback when a listing's source page doesn't expose it (seam already in `resolve-neighborhood.ts`)
 - GreatSchools API directly (fresher rating data)
 
 ---

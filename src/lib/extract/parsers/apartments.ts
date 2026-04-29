@@ -85,6 +85,22 @@ function extractApartmentsSchools(html: string): ParsedSchool[] {
   return out;
 }
 
+// Apartments.com inlines a neighborhood breadcrumb in the page chrome
+// (".neighborhoodLink" anchor with the neighborhood name). The rentals JSON
+// also exposes Neighborhood/NeighborhoodName on some property types. Probe
+// JSON first, fall back to the breadcrumb anchor.
+function extractNeighborhood(rental: Json, html: string): string | null {
+  const fromJson =
+    asString(get(rental, "Neighborhood")) ??
+    asString(get(rental, "NeighborhoodName")) ??
+    asString(get(rental, "Community", "NeighborhoodName"));
+  if (fromJson) return fromJson;
+  const m = html.match(
+    /class="[^"]*neighborhoodLink[^"]*"[^>]*>([^<]+)</i,
+  );
+  return m ? m[1].trim() : null;
+}
+
 // Apartments.com signals availability in two places:
 // - JSON-LD offers.availability ("https://schema.org/InStock" / "OutOfStock")
 // - The page often shows "No longer available" copy when the listing is gone.
@@ -165,6 +181,7 @@ export function parseApartments(
     description:
       asString(get(graph0, "description")) ??
       asString(get(firstRental, "Description")),
+    neighborhood: extractNeighborhood(firstRental, html),
     availability: extractAvailability(graph0, html),
     photos: extractPhotos(graph0),
     schools: extractApartmentsSchools(html),

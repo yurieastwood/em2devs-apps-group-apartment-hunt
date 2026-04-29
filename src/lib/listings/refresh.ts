@@ -6,6 +6,7 @@ import { parseApartmentList } from "../extract/parsers/apartmentlist";
 import { parseApartments } from "../extract/parsers/apartments";
 import { parseZillow } from "../extract/parsers/zillow";
 import type { Availability, ParsedListing } from "../extract/types";
+import { resolveNeighborhood } from "./resolve-neighborhood";
 
 type Parser = (url: string, html: string) => ParsedListing;
 
@@ -116,6 +117,12 @@ export async function refreshListing(
   const parsed = parser(current.sourceUrl, fetched.html);
   const changes = diffListing(current, parsed.priceUsd, parsed.availability);
 
+  const neighborhood = await resolveNeighborhood({
+    parsedNeighborhood: parsed.neighborhood,
+    latitude: parsed.latitude,
+    longitude: parsed.longitude,
+  });
+
   if (changes.length > 0) {
     await db.insert(listingChanges).values(
       changes.map((c) => ({
@@ -128,11 +135,14 @@ export async function refreshListing(
     );
   }
 
+  // Neighborhood is synced silently — not in the audit log per the
+  // price+availability-only policy. Parser improvements heal old rows.
   await db
     .update(listings)
     .set({
       priceUsd: parsed.priceUsd,
       availability: parsed.availability,
+      neighborhood,
       lastCheckedAt: now,
       lastCheckError: null,
     })

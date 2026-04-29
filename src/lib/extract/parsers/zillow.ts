@@ -74,6 +74,18 @@ function extractSchools(property: Json): ParsedSchool[] {
   return out;
 }
 
+// Zillow surfaces neighborhood under a few different shapes depending on
+// listing type. Probe in order of specificity, first hit wins.
+function extractNeighborhood(property: Json): string | null {
+  return (
+    asString(get(property, "neighborhoodRegion", "name")) ??
+    asString(get(property, "parentRegion", "name")) ??
+    asString(get(property, "address", "neighborhood")) ??
+    asString(get(property, "neighborhood")) ??
+    null
+  );
+}
+
 // Zillow's homeStatus values: FOR_RENT / FOR_SALE → available; RECENTLY_RENTED
 // / RECENTLY_SOLD / OFF_MARKET → unavailable. Anything else stays unknown.
 function extractAvailability(property: Json): Availability {
@@ -139,6 +151,7 @@ export function parseZillow(sourceUrl: string, html: string): ParsedListing {
     squareFeet: asNum(get(property, "livingArea")),
     priceUsd: asNum(get(ld, "offers", "price")) ?? asNum(get(property, "price")),
     description: asString(get(property, "description")),
+    neighborhood: extractNeighborhood(property),
     availability: extractAvailability(property),
     photos: extractPhotos(property),
     schools: extractSchools(property),

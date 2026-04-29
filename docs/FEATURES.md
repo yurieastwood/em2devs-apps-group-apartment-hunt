@@ -90,6 +90,21 @@ Family-scoped visibility via Clerk Organizations.
 
 Still planned: a backfill UI for moving pre-orgs personal listings into an active org (today the user runs SQL); disabling public sign-up in Clerk so only invited members can join.
 
+## Slice 3.8 — Neighborhood
+
+Per-listing neighborhood extracted from each source, displayed everywhere the listing surfaces, filterable on the home page.
+
+- **Schema**: `listings.neighborhood` (text, nullable). Existing rows are null until refreshed.
+- **Type**: `ParsedListing.neighborhood: string | null` returned by every parser.
+- **Parsers**:
+  - ApartmentList: `__NEXT_DATA__.props.pageProps.component.listing.neighborhood` (verified — e.g. "East Hyde Park").
+  - Zillow: probes `property.neighborhoodRegion.name`, `property.parentRegion.name`, `property.address.neighborhood`, `property.neighborhood` in order — first non-empty wins.
+  - Apartments.com: probes `firstRental.Neighborhood / NeighborhoodName / Community.NeighborhoodName` from the inline rentals JSON; falls back to a regex on the page chrome's `.neighborhoodLink` anchor.
+- **Resolver shim** (`src/lib/listings/resolve-neighborhood.ts`): single async seam returning the parsed value today; the future Google Places fallback (lat/lng → reverse-geocode → neighborhood) plugs in here without touching call sites. Both `createListingFromUrl` and `refreshListing` route through it.
+- **Refresh policy**: `refreshListing` updates `neighborhood` silently — no `listing_changes` row, since the audit log scope is price + availability only. Parser improvements heal old rows on the next refresh.
+- **Display**: cards show "📍 {neighborhood}" between the address and the BR/BA/price line; list rows show it inline before BR/BA; the detail-page header shows it under the address.
+- **Filter**: a multi-select chip group on the home page derived from the unique non-null neighborhood values across the visible listings. Clicking chips narrows by OR semantics.
+
 ## Slice 3.7 — Customizable POI pin colors
 
 Per-POI pin color pickable from a fixed palette, rendered via Google's `<Pin>` so it stays pixel-identical across platforms.

@@ -137,6 +137,11 @@ export default async function ListingDetailPage({
         {listing.address && listing.address !== listing.title ? (
           <p className="text-muted-foreground">{listing.address}</p>
         ) : null}
+        {listing.neighborhood ? (
+          <p className="text-sm text-muted-foreground mt-1">
+            📍 {listing.neighborhood}
+          </p>
+        ) : null}
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
           <span className="flex items-center gap-2">
             <span>Priority</span>
