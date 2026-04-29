@@ -107,6 +107,7 @@ export async function createListingFromUrl(
       description: parsed.description,
       neighborhood,
       availability: parsed.availability,
+      units: parsed.units,
       lastCheckedAt: new Date(),
       raw: parsed.raw,
     })

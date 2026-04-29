@@ -20,6 +20,16 @@ export type ParsedSchool = {
 
 export type Availability = "available" | "unavailable" | "unknown";
 
+export type ParsedUnit = {
+  name: string | null;
+  beds: number | null;
+  baths: number | null;
+  sqft: number | null;
+  price: number | null;
+  availableFrom: string | null;
+  photoUrl: string | null;
+};
+
 export type ParsedListing = {
   sourceUrl: string;
   sourceHost: string;
@@ -39,6 +49,7 @@ export type ParsedListing = {
   description: string | null;
   neighborhood: string | null;
   availability: Availability;
+  units: ParsedUnit[] | null;
   photos: ListingPhoto[];
   schools: ParsedSchool[];
   raw: unknown;

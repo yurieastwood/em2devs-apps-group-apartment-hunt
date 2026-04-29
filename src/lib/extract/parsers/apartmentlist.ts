@@ -206,6 +206,7 @@ export function parseApartmentList(
       asString(get(ld, "description")),
     neighborhood: asString(get(listing, "neighborhood")),
     availability: extractAvailability(listing, html),
+    units: null,
     photos: extractPhotos(listing),
     schools: extractSchools(component),
     raw: { jsonLd: ld, apartmentLd: aptLd, listing, pickedPlan: plan },

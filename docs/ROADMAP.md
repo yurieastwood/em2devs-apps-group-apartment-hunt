@@ -81,6 +81,10 @@ Each POI can pick a pin color from an 8-color palette on its add/edit form. Maps
 
 Per-listing neighborhood extracted from each source's parser, displayed under the address on cards / list rows / detail page, and filterable on the home page via a multi-select chip group.
 
+## Slice 3.9 — Multi-unit Zillow building listings ✅
+
+Zillow `/apartments/<city>/<slug>/<lnId>/` URLs (apartment buildings with many floor plans) now parse into a structured units array. The home page card highlights a 3BR + 2BA unit (cheapest match) when one exists, falling back to the cheapest priced unit. The detail page renders an "Available units" section listing every floor plan, with the headline unit highlighted.
+
 ---
 
 ## Backlog 💡

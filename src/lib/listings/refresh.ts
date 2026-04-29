@@ -143,6 +143,7 @@ export async function refreshListing(
       priceUsd: parsed.priceUsd,
       availability: parsed.availability,
       neighborhood,
+      units: parsed.units,
       lastCheckedAt: now,
       lastCheckError: null,
     })

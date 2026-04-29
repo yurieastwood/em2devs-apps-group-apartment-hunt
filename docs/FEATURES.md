@@ -91,6 +91,21 @@ Family-scoped visibility via Clerk Organizations.
 
 Still planned: a backfill UI for moving pre-orgs personal listings into an active org (today the user runs SQL); disabling public sign-up in Clerk so only invited members can join.
 
+## Slice 3.9 — Multi-unit Zillow building listings
+
+Zillow apartment-building URLs (the `/apartments/<city>/<slug>/<lnId>/` pattern) host a different React component and a different `__NEXT_DATA__` shape than single-home `_zpid` URLs. The single-home parser returned mostly nulls for these.
+
+- **Schema**: `listings.units` (jsonb, nullable). Empty/null on single-unit listings; populated with the array of floor plans on building listings.
+- **Type**: `ParsedUnit = { name, beds, baths, sqft, price, availableFrom, photoUrl }`. `ParsedListing.units: ParsedUnit[] | null`.
+- **URL detection** (`zillow.ts`): the regex `/\/apartments\/[^/]+\/[^/]+\/([a-zA-Z0-9]+)\/?/` distinguishes building URLs from single-home `_zpid` URLs. The capture group is the building's `lnId` and is stored as `source_listing_id`.
+- **Building data** (`extractBuilding`): probes five candidate paths in `__NEXT_DATA__` (`componentProps.initialReduxState.gdp.building`, `pageProps.initialReduxState.gdp.building`, `componentProps.building`, `buildingData`, `building`) — first non-empty wins.
+- **Floor plans** (`extractFloorPlans`): probes `floorPlans` / `units` / `ungroupedUnits`. Each plan probes multiple key shapes for beds (`beds` / `bedrooms`), baths (`baths` / `bathrooms` / `fullBaths`), sqft (`sqft` / `squareFootage` / `minSqft`), price (`priceMin` / `price` / `minPrice`), available-from, and photo URL.
+- **Headline selection** (`pickHeadlineUnit`): prefer **3 BR + 2 BA with a real price**, sorted by price ascending. Fall back to the cheapest unit with a real price. Last resort: first unit. The headline drives the existing `bedrooms` / `bathrooms` / `squareFeet` / `priceUsd` columns so the home page card and filters keep working without changes.
+- **Photos**: `extractBuildingPhotos` probes `photos` / `mediaSlideShow` / `buildingMedia` / `mediaItems` for image URLs (or falls back to the same `mixedSources` jpeg picker the single-home parser uses).
+- **Persistence**: `createListingFromUrl` writes `units` to the new column; `refreshListing` syncs it silently (no audit row, consistent with the price + availability-only audit policy). Schema needs `npm run db:push` to add the column.
+- **Detail-page display** (`<ListingUnitsSection>`): renders an "Available units" table showing every floor plan sorted by price, with the row matching the headline (3+2, headline price) given a `bg-primary/10` highlight. Renders nothing when `units` is null/empty so the component can be dropped in unconditionally.
+- **Defensive design**: Zillow's building data shape is unverified against live samples (curl-impersonate isn't available in the dev sandbox); paths are probed across rollouts. If a real listing comes up empty, the parser still falls through to nulls without throwing — the detail page just shows what it has.
+
 ## Slice 3.8 — Neighborhood
 
 Per-listing neighborhood extracted from each source, displayed everywhere the listing surfaces, filterable on the home page.

@@ -15,6 +15,7 @@ import { HomeMap } from "@/components/home-map";
 import { PriorityEditor } from "@/components/priority-editor";
 import { RefreshListingButton } from "@/components/refresh-listing-button";
 import { ListingChangesLog } from "@/components/listing-changes-log";
+import { ListingUnitsSection } from "@/components/listing-units-section";
 import { getPois } from "@/lib/points-of-interest";
 
 import { ListingLabelsSection } from "@/components/listing-labels";
@@ -210,6 +211,11 @@ export default async function ListingDetailPage({
           />
         </section>
       ) : null}
+
+      <ListingUnitsSection
+        units={listing.units}
+        headlinePrice={listing.priceUsd}
+      />
 
       {listing.description ? (
         <section className="mb-6">

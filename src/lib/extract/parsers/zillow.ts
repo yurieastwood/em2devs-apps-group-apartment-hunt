@@ -3,6 +3,7 @@ import type {
   ListingPhoto,
   ParsedListing,
   ParsedSchool,
+  ParsedUnit,
 } from "../types";
 import {
   asNum,
@@ -14,6 +15,7 @@ import {
 } from "./util";
 
 const ZPID_RE = /\/(\d+)_zpid\//;
+const BUILDING_URL_RE = /\/apartments\/[^/]+\/[^/]+\/([a-zA-Z0-9]+)\/?/;
 
 function extractNextData(html: string): Json {
   const m = html.match(
@@ -114,7 +116,216 @@ function extractPhotos(property: Json): ListingPhoto[] {
   return photos;
 }
 
+// Zillow's "/apartments/<city>/<slug>/<lnId>/" URLs render an apartment-
+// building page rather than a single home, with a different React component
+// and a different __NEXT_DATA__ shape. Multiple paths probed because Zillow
+// nests this differently across rollouts.
+function extractBuilding(nextData: Json): Json {
+  const candidates: Json[] = [
+    get(
+      nextData,
+      "props",
+      "pageProps",
+      "componentProps",
+      "initialReduxState",
+      "gdp",
+      "building",
+    ),
+    get(
+      nextData,
+      "props",
+      "pageProps",
+      "initialReduxState",
+      "gdp",
+      "building",
+    ),
+    get(nextData, "props", "pageProps", "componentProps", "building"),
+    get(nextData, "props", "pageProps", "buildingData"),
+    get(nextData, "props", "pageProps", "building"),
+  ];
+  for (const c of candidates) {
+    if (c && typeof c === "object") return c;
+  }
+  return null;
+}
+
+function extractFloorPlans(building: Json): ParsedUnit[] {
+  const candidates: Json[] = [
+    get(building, "floorPlans"),
+    get(building, "units"),
+    get(building, "ungroupedUnits"),
+  ];
+  let plans: Json[] = [];
+  for (const c of candidates) {
+    if (Array.isArray(c) && c.length > 0) {
+      plans = c;
+      break;
+    }
+  }
+  if (plans.length === 0) return [];
+  return plans
+    .map((p): ParsedUnit => ({
+      name:
+        asString(get(p, "name")) ??
+        asString(get(p, "label")) ??
+        asString(get(p, "floorPlanName")),
+      beds: asNum(get(p, "beds")) ?? asNum(get(p, "bedrooms")),
+      baths:
+        asNum(get(p, "baths")) ??
+        asNum(get(p, "bathrooms")) ??
+        asNum(get(p, "fullBaths")),
+      sqft:
+        asNum(get(p, "sqft")) ??
+        asNum(get(p, "squareFootage")) ??
+        asNum(get(p, "minSqft")),
+      price:
+        asNum(get(p, "priceMin")) ??
+        asNum(get(p, "price")) ??
+        asNum(get(p, "minPrice")),
+      availableFrom:
+        asString(get(p, "availableFrom")) ??
+        asString(get(p, "availFrom")) ??
+        asString(get(p, "availability")),
+      photoUrl:
+        asString(get(p, "imageURL")) ??
+        asString(get(p, "image", "url")) ??
+        asString(get(p, "photo", "url")),
+    }))
+    .filter(
+      (u) =>
+        u.beds != null ||
+        u.baths != null ||
+        u.price != null ||
+        u.sqft != null,
+    );
+}
+
+// Headline = the unit shown in single-value columns (home page card).
+// Priority: 3BR + 2BA with a real price → cheapest. Then: cheapest with a
+// real price. Last resort: first unit.
+function pickHeadlineUnit(units: ParsedUnit[]): ParsedUnit | null {
+  if (units.length === 0) return null;
+  const target = units.filter(
+    (u) => u.beds === 3 && u.baths === 2 && u.price != null && u.price > 0,
+  );
+  if (target.length > 0) {
+    return [...target].sort(
+      (a, b) => (a.price ?? Infinity) - (b.price ?? Infinity),
+    )[0];
+  }
+  const priced = units.filter((u) => u.price != null && u.price > 0);
+  if (priced.length > 0) {
+    return [...priced].sort(
+      (a, b) => (a.price ?? Infinity) - (b.price ?? Infinity),
+    )[0];
+  }
+  return units[0];
+}
+
+function extractBuildingPhotos(building: Json): ListingPhoto[] {
+  const candidates: Json[] = [
+    get(building, "photos"),
+    get(building, "mediaSlideShow"),
+    get(building, "buildingMedia"),
+    get(building, "mediaItems"),
+  ];
+  let list: Json[] = [];
+  for (const c of candidates) {
+    if (Array.isArray(c) && c.length > 0) {
+      list = c;
+      break;
+    }
+  }
+  const out: ListingPhoto[] = [];
+  for (const p of list) {
+    const url =
+      asString(get(p, "url")) ??
+      asString(get(p, "imageURL")) ??
+      asString(get(p, "src"));
+    if (!url) {
+      const mixed = pickLargestJpeg(get(p, "mixedSources"));
+      if (mixed) out.push(mixed);
+      continue;
+    }
+    out.push({ url });
+  }
+  return out;
+}
+
+function parseZillowBuilding(
+  sourceUrl: string,
+  html: string,
+  buildingId: string,
+): ParsedListing {
+  const ld = extractFirstJsonLd(html);
+  const nextData = extractNextData(html);
+  const building = extractBuilding(nextData);
+
+  const units = extractFloorPlans(building);
+  const headline = pickHeadlineUnit(units);
+
+  const ldAddress = get(ld, "address");
+  const ldGeo = get(ld, "geo");
+
+  const street =
+    asString(get(building, "streetAddress")) ??
+    asString(get(ldAddress, "streetAddress"));
+  const city =
+    asString(get(building, "city")) ??
+    asString(get(ldAddress, "addressLocality"));
+  const state =
+    asString(get(building, "state")) ??
+    asString(get(ldAddress, "addressRegion"));
+  const zip =
+    asString(get(building, "zipcode")) ??
+    asString(get(ldAddress, "postalCode"));
+  const composedAddress =
+    [street, [city, state].filter(Boolean).join(", "), zip]
+      .filter(Boolean)
+      .join(", ") || null;
+  const fullAddress =
+    asString(get(ld, "name")) ??
+    asString(get(building, "fullAddress")) ??
+    composedAddress;
+
+  return {
+    sourceUrl,
+    sourceHost: "zillow.com",
+    sourceListingId: buildingId,
+    title:
+      asString(get(building, "buildingName")) ??
+      asString(get(building, "name")) ??
+      asString(get(ld, "name")),
+    address: fullAddress,
+    streetAddress: street,
+    city,
+    state,
+    zipCode: zip,
+    latitude: asNum(get(building, "latitude")) ?? asNum(get(ldGeo, "latitude")),
+    longitude:
+      asNum(get(building, "longitude")) ?? asNum(get(ldGeo, "longitude")),
+    bedrooms: headline?.beds ?? null,
+    bathrooms: headline?.baths ?? null,
+    squareFeet: headline?.sqft ?? null,
+    priceUsd: headline?.price ?? null,
+    description: asString(get(building, "description")),
+    neighborhood:
+      asString(get(building, "neighborhoodRegion", "name")) ??
+      asString(get(building, "neighborhood")),
+    availability: "available",
+    units: units.length > 0 ? units : null,
+    photos: extractBuildingPhotos(building),
+    schools: extractSchools(building),
+    raw: { kind: "building", buildingId, jsonLd: ld, building },
+  };
+}
+
 export function parseZillow(sourceUrl: string, html: string): ParsedListing {
+  const buildingMatch = sourceUrl.match(BUILDING_URL_RE);
+  if (buildingMatch) {
+    return parseZillowBuilding(sourceUrl, html, buildingMatch[1]);
+  }
+
   const zpidMatch = sourceUrl.match(ZPID_RE);
   const sourceListingId = zpidMatch ? zpidMatch[1] : null;
 
@@ -153,6 +364,7 @@ export function parseZillow(sourceUrl: string, html: string): ParsedListing {
     description: asString(get(property, "description")),
     neighborhood: extractNeighborhood(property),
     availability: extractAvailability(property),
+    units: null,
     photos: extractPhotos(property),
     schools: extractSchools(property),
     raw: { jsonLd: ld, property },

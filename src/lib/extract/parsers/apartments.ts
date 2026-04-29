@@ -183,6 +183,7 @@ export function parseApartments(
       asString(get(firstRental, "Description")),
     neighborhood: extractNeighborhood(firstRental, html),
     availability: extractAvailability(graph0, html),
+    units: null,
     photos: extractPhotos(graph0),
     schools: extractApartmentsSchools(html),
     raw: { jsonLd: ld, rental: firstRental },
