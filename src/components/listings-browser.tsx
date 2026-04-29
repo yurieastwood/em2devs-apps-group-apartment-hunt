@@ -375,10 +375,12 @@ export function ListingsBrowser({
         />
         <PriceGroup value={maxPrice} onChange={setMaxPrice} />
         <ThresholdGroup
-          label="School"
+          label="Min School Grade"
           options={RATING_OPTIONS}
           active={minPkRating}
           onChange={setMinPkRating}
+          allowCustom
+          customMax={10}
         />
         {scopeLabels.length > 0 ? (
           <LabelFilterGroup
@@ -751,12 +753,17 @@ function ThresholdGroup({
   options,
   active,
   onChange,
+  allowCustom = false,
+  customMax,
 }: {
   label: string;
   options: ReadonlyArray<number>;
   active: number;
   onChange: (v: number) => void;
+  allowCustom?: boolean;
+  customMax?: number;
 }) {
+  const inputValue = active === 0 ? "" : String(active);
   return (
     <div className="flex items-center gap-2">
       <span className="text-muted-foreground">{label}</span>
@@ -777,6 +784,31 @@ function ThresholdGroup({
           </button>
         ))}
       </div>
+      {allowCustom ? (
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={customMax}
+          step={1}
+          value={inputValue}
+          onChange={(e) => {
+            const raw = e.target.value;
+            if (raw === "") {
+              onChange(0);
+              return;
+            }
+            const n = Number(raw);
+            if (!Number.isFinite(n)) return;
+            const truncated = Math.max(0, Math.trunc(n));
+            const clamped =
+              customMax != null ? Math.min(truncated, customMax) : truncated;
+            onChange(clamped);
+          }}
+          placeholder="Custom"
+          className="w-16 border border-border bg-input-background text-foreground rounded px-1 py-0.5 text-xs"
+        />
+      ) : null}
     </div>
   );
 }
