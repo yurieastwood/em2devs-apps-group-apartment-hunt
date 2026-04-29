@@ -1,4 +1,4 @@
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { listings } from "@/db/schema";
 import {
@@ -9,12 +9,19 @@ import {
 
 export type SetPriorityResult = { ok: true } | { ok: false; reason: string };
 
-// Free-form priority with collision shift: any positive integer is valid;
-// null means unprioritized. Setting priority P on a listing shifts every
-// other listing in the same scope whose priority is >= P up by 1, then
-// writes P. So if A=3 and you set L=3, A becomes 4 (and any further
-// collisions cascade automatically since the shift is a single bulk
-// update). Gaps are allowed; you can pick any number.
+// Free-form priority with minimal-shift collision handling.
+// - Any positive integer is valid; null means unprioritized.
+// - Setting priority P on a listing shifts only the contiguous run of
+//   already-taken priorities starting at P up by 1, stopping at the first
+//   gap. Listings beyond the gap stay put.
+//
+// Example: priorities {1, 3, 4, 7, 9}; setting a new listing to 1 →
+//   1 is taken, 2 is a gap → shift only the listing at 1, becomes
+//   {1(new), 2, 3, 4, 7, 9}.
+//
+// Example: priorities {1, 2, 3, 5}; setting a new listing to 1 →
+//   1, 2, 3 are a contiguous run, 4 is the first gap → shift 1→2, 2→3,
+//   3→4, and the new listing takes 1.
 export async function setListingPriority(
   scope: AuthCtx,
   listingId: string,
@@ -46,8 +53,8 @@ export async function setListingPriority(
   const where = listingScope(scope);
   if (!where) return { ok: false, reason: "No active scope" };
 
-  // 1) Vacate this listing's slot so the bulk shift below doesn't double-
-  //    count it.
+  // Vacate this listing's slot so the contiguous-run computation below
+  // doesn't see its old priority.
   if (target.priority !== null) {
     await db
       .update(listings)
@@ -55,14 +62,32 @@ export async function setListingPriority(
       .where(eq(listings.id, listingId));
   }
 
-  // 2) Shift every other listing in scope with priority >= newPriority up
-  //    by 1 — resolves the collision and any chained collisions in one go.
-  // 3) Write the new priority.
   if (newPriority !== null) {
-    await db
-      .update(listings)
-      .set({ priority: sql`${listings.priority} + 1` })
-      .where(and(where, gte(listings.priority, newPriority)));
+    // Find the first gap at or after newPriority. Only listings whose
+    // priorities fall in [newPriority, firstGap - 1] need to shift.
+    const rows = await db
+      .select({ priority: listings.priority })
+      .from(listings)
+      .where(and(where, isNotNull(listings.priority)));
+    const taken = new Set<number>();
+    for (const r of rows) if (r.priority != null) taken.add(r.priority);
+
+    let firstGap = newPriority;
+    while (taken.has(firstGap)) firstGap += 1;
+
+    if (firstGap > newPriority) {
+      await db
+        .update(listings)
+        .set({ priority: sql`${listings.priority} + 1` })
+        .where(
+          and(
+            where,
+            gte(listings.priority, newPriority),
+            lte(listings.priority, firstGap - 1),
+          ),
+        );
+    }
+
     await db
       .update(listings)
       .set({ priority: newPriority })
