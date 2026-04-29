@@ -94,7 +94,9 @@ function fmtMeta(s: SchoolRow): string {
 export function SchoolsBrowser({ schools }: { schools: SchoolRow[] }) {
   const [sort, setSort] = useState<SortOption>("distance-asc");
   const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set());
-  const [activeBands, setActiveBands] = useState<Set<string>>(new Set());
+  const [activeBands, setActiveBands] = useState<Set<string>>(
+    new Set(["PK"]),
+  );
   const [minRating, setMinRating] = useState(0);
 
   const availableTypes = useMemo(() => {
