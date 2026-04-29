@@ -174,7 +174,7 @@ A contiguous 1..N priority within each scope (org or personal). Anyone in the fa
 
 Reuses the home-page `<HomeMap>` component on `/listings/[id]`.
 
-- Renders between the schools section and comments section, gated on the listing having `latitude` + `longitude`.
+- Renders between the photo carousel (and any photo-rehost-error block) and the description, gated on the listing having `latitude` + `longitude`. Earlier placement (after schools, before comments) was moved up so the map sits with the visual context of the listing.
 - Props: `home={null}` (the user's actual home is not shown here), `pins=[<single listing pin>]` (default blue marker labeled with the listing's address), `pois=<scope POIs>` (green markers, same as on the home page).
 - Auto-fits bounds to include the listing + every POI; with no POIs, it centers on the listing at zoom 14 (the FitBounds child handles the single-position case).
 - POIs come from `getPois({ userId, orgId })`, the same scope-aware fetch the home page uses, so family POIs are visible to every member.
