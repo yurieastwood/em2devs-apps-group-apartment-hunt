@@ -112,6 +112,7 @@ Grouped by priority. Add new items under whichever group fits.
 - Google Places API for broader school coverage
 - Google Places API as a neighborhood fallback when a listing's source page doesn't expose it (seam already in `resolve-neighborhood.ts`)
 - GreatSchools API directly (fresher rating data)
+- `next-intl` with explicit `en` / `pt-BR` catalogs as a polished replacement for the Google Translate widget — every UI string moves into per-locale JSON, URLs become `/en/...` and `/pt-BR/...`, no third-party banner, no React-reconciliation interference. Worth doing if the widget gets annoying or if we need translation-aware emails / non-browser surfaces.
 
 ---
 
