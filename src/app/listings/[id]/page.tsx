@@ -108,8 +108,11 @@ export default async function ListingDetailPage({
 
   const isOwner = userId === listing.ownerClerkUserId;
   const isAdmin = await isOrgAdmin();
-  const canEdit = isAdmin;
-  const canDelete = isAdmin || isOwner;
+  // Trashed listings are visible only to admins (so they can preview before
+  // restoring or purging from the /listings/deleted page).
+  if (listing.deletedAt && !isAdmin) notFound();
+  const canEdit = isAdmin && !listing.deletedAt;
+  const canDelete = !listing.deletedAt && (isAdmin || isOwner);
 
   const userPois = userId ? await getPois({ userId, orgId }) : [];
 
@@ -129,6 +132,25 @@ export default async function ListingDetailPage({
         <div className="mb-4 rounded border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 p-3 text-sm">
           This listing was already in your library. You&apos;re looking at the
           existing entry.
+        </div>
+      ) : null}
+      {listing.deletedAt ? (
+        <div className="mb-4 rounded border border-destructive/40 bg-destructive/10 text-destructive p-3 text-sm flex items-center justify-between gap-3 flex-wrap">
+          <span>
+            <strong>In trash.</strong> Deleted{" "}
+            {new Date(listing.deletedAt).toLocaleString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+            . Restore from the{" "}
+            <Link href="/listings/deleted" className="underline">
+              Trash page
+            </Link>
+            .
+          </span>
         </div>
       ) : null}
       <header className="mb-6">

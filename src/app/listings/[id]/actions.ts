@@ -4,17 +4,14 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import {
-  comments,
-  listingPhotos,
-  listings,
-  reactions,
-} from "@/db/schema";
-import { deleteObjects } from "@/lib/storage/r2";
+import { comments, listings, reactions } from "@/db/schema";
 import { isOrgAdmin } from "@/lib/auth/roles";
 import { listingScope, userCanAccessListing } from "@/lib/listings/access";
 import { shiftPrioritiesAfterDelete } from "@/lib/listings/priority";
 
+// Excludes soft-deleted listings so comment / reaction / edit / delete
+// actions on items in the trash silently no-op. The trash flow (restore /
+// permanent delete) reads the row directly with its own access check.
 async function getAccessibleListing(
   listingId: string,
   authCtx: { userId: string | null; orgId: string | null | undefined },
@@ -24,19 +21,20 @@ async function getAccessibleListing(
       id: listings.id,
       orgId: listings.orgId,
       ownerClerkUserId: listings.ownerClerkUserId,
+      deletedAt: listings.deletedAt,
     })
     .from(listings)
     .where(eq(listings.id, listingId))
     .limit(1);
   if (!row) return null;
+  if (row.deletedAt != null) return null;
   if (!userCanAccessListing(row, authCtx)) return null;
   return row;
 }
 
-// Returns void after revalidating /. Caller decides whether to navigate
-// (the detail page will router.push("/") because the page no longer points
-// at a real listing; the home-page caller stays put — the listing just
-// disappears from the now-revalidated list).
+// Soft-delete: the row stays in the DB so it can be restored or permanently
+// purged from the /listings/deleted admin page. R2 photos are kept (no
+// cleanup here). Priority is cleared so the active list re-packs cleanly.
 export async function deleteListingAction(listingId: string): Promise<void> {
   const { userId, orgId } = await auth();
   if (!userId) return;
@@ -51,31 +49,27 @@ export async function deleteListingAction(listingId: string): Promise<void> {
   const isOwner = target.ownerClerkUserId === userId;
   if (!isAdmin && !isOwner) return;
 
-  const photos = await db
-    .select({ r2Key: listingPhotos.r2Key })
-    .from(listingPhotos)
-    .where(eq(listingPhotos.listingId, listingId));
-
-  const result = await db
-    .delete(listings)
+  // Read the priority before clearing it so we can repack siblings.
+  const [oldRow] = await db
+    .select({ priority: listings.priority })
+    .from(listings)
     .where(and(eq(listings.id, listingId), scope))
-    .returning({ id: listings.id, priority: listings.priority });
+    .limit(1);
+  if (!oldRow) return;
 
-  if (result.length === 0) {
-    return;
-  }
+  await db
+    .update(listings)
+    .set({
+      deletedAt: new Date(),
+      priority: null,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(listings.id, listingId), scope));
 
-  await shiftPrioritiesAfterDelete({ userId, orgId }, result[0].priority);
-
-  if (photos.length > 0) {
-    try {
-      await deleteObjects(photos.map((p) => p.r2Key));
-    } catch (err) {
-      console.error("r2 cleanup failed for listing", listingId, err);
-    }
-  }
+  await shiftPrioritiesAfterDelete({ userId, orgId }, oldRow.priority);
 
   revalidatePath("/");
+  revalidatePath("/listings/deleted");
 }
 
 export type CommentState =

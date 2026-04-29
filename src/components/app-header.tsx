@@ -38,6 +38,14 @@ export async function AppHeader() {
             </Link>
           ) : null}
           {isAdmin ? (
+            <Link
+              href="/listings/deleted"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Trash
+            </Link>
+          ) : null}
+          {isAdmin ? (
             <OrganizationSwitcher
               hidePersonal={false}
               afterCreateOrganizationUrl="/"

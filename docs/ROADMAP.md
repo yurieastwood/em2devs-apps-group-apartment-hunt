@@ -85,6 +85,10 @@ Per-listing neighborhood extracted from each source's parser, displayed under th
 
 Zillow `/apartments/<city>/<slug>/<lnId>/` URLs (apartment buildings with many floor plans) now parse into a structured units array. The home page card highlights a 3BR + 2BA unit (cheapest match) when one exists, falling back to the cheapest priced unit. The detail page renders an "Available units" section listing every floor plan, with the headline unit highlighted.
 
+## Slice 4.0 — Soft delete + Trash ✅
+
+Deleting a listing now soft-deletes it: the row stays, photos are kept, and the audit trail survives. Admins access an `/listings/deleted` page (linked as "Trash" in the header) to view soft-deleted listings, restore them, or permanently delete (purges row + R2 photos). The cron and per-listing manual refresh keep updating soft-deleted listings; the home-page "Refresh all" only touches active listings.
+
 ---
 
 ## Backlog 💡

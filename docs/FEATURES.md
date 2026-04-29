@@ -91,6 +91,30 @@ Family-scoped visibility via Clerk Organizations.
 
 Still planned: a backfill UI for moving pre-orgs personal listings into an active org (today the user runs SQL); disabling public sign-up in Clerk so only invited members can join.
 
+## Slice 4.0 — Soft delete + Trash
+
+Listings can be restored after deletion, audit history survives, and the cron keeps updating trashed listings so they're current if/when restored.
+
+- **Schema**: `listings.deleted_at` (timestamptz, nullable). Null = active. Non-null = trashed at that timestamp.
+- **Scope helpers** (`access.ts`):
+  - `listingScope({ userId, orgId })` now ANDs `deleted_at IS NULL` so every active query (home page, refresh-all, comments, etc.) automatically excludes the trash.
+  - New `deletedListingScope({ userId, orgId })` is the inverse — used by the trash page and the restore / permanent-delete actions.
+  - `userCanAccessListing` is unchanged (pure ownership / org check); each page decides what to render based on `deleted_at`.
+- **Soft delete** (`deleteListingAction`): replaces the previous hard-delete. Reads the priority first, then sets `deleted_at = now`, clears `priority`, and calls `shiftPrioritiesAfterDelete` so the active list re-packs cleanly. R2 photos are kept. Listing-changes / labels / comments / reactions all stay (no FK cascade fires since the row isn't dropped).
+- **Restore** (`restoreListingAction`, `src/lib/listings/trash-actions.ts`): admin-only. Sets `deleted_at = null`. Priority stays null — admin re-prioritizes after restore if they want.
+- **Permanent delete** (`permanentlyDeleteListingAction`, same file): admin-only and only operates on listings already in the trash (uses `deletedListingScope` in the WHERE clause, so calling it on an active listing is a no-op). Drops the DB row (FK cascade fires) and best-effort batch-deletes R2 photo objects. The TrashRow `<button>` wraps the call in a confirm dialog.
+- **Trash page** (`/listings/deleted`): admin-only (page-level redirect for non-admins and personal-mode users). Server component fetches via `deletedListingScope` ordered by `deleted_at desc`, joins covers from `listing_photos` filtered by `inArray(listingId, ids)`, and renders one `<TrashRow>` per item. The row is a client component with Restore / Delete forever buttons.
+- **Detail page**:
+  - Trashed listings 404 for members; admins see a destructive-styled banner ("In trash. Deleted …. Restore from the Trash page.") with a link to `/listings/deleted`.
+  - `canEdit` / `canDelete` flags are forced false when `deleted_at` is set, so the Edit and Delete actions in the header are hidden — restore is the only path back.
+  - The per-listing `<RefreshListingButton>` still works for trashed items (admin can refresh a trashed listing without restoring; price + availability + units stay current).
+- **Refresh policy**:
+  - Cron route (`/api/cron/refresh-listings`) iterates `db.select().from(listings)` with no scope, so trashed listings are updated daily.
+  - `refreshAllListingsAction` (home page button) uses `listingScope` and now skips trash by construction — it only refreshes what's visible on the home page.
+  - `refreshListingAction` (per-listing) uses an unscoped lookup + `userCanAccessListing`, so admins can fire it from a trashed listing's detail page.
+- **Header nav**: admin-only "Trash" link in `<AppHeader>` next to "Add listing".
+- **Action access guard**: `getAccessibleListing` (used by comment / reaction / edit / delete actions) now also returns null when `deletedAt != null`, so even an admin can't add a comment or toggle a reaction on a trashed listing without restoring it first. Restore-then-act is the explicit path.
+
 ## Slice 3.9 — Multi-unit Zillow building listings
 
 Zillow apartment-building URLs (the `/apartments/<city>/<slug>/<lnId>/` pattern) host a different React component and a different `__NEXT_DATA__` shape than single-home `_zpid` URLs. The single-home parser returned mostly nulls for these.
