@@ -1,91 +1,66 @@
-// Google Distance Matrix API client. Server-side only.
-// Requires GOOGLE_MAPS_SERVER_KEY (a separate key from the public Maps JS one,
-// because the public key has HTTP-referrer restrictions that don't apply to
-// server-to-server requests).
+// Transit distances for listing × POI pairs.
+//
+// Historically this called Google's Distance Matrix API in transit mode,
+// which only returned the default route — often not the fastest one
+// surfaced in the Maps UI. We now delegate to the Routes API v2 client
+// (`routes-api.ts`) per pair, which asks for alternatives and returns the
+// fastest. The signature is unchanged so callers can keep using a simple
+// matrix shape.
+//
+// Departure time is fixed at the upcoming Tuesday 08:30 in America/Chicago
+// to match the user's commute scenario.
 
-const ENDPOINT = "https://maps.googleapis.com/maps/api/distancematrix/json";
+import {
+  fetchFastestTransit,
+  nextTuesdayMorningChicagoIso,
+  type Distance,
+  type LatLng,
+} from "./routes-api";
 
-export type LatLng = { lat: number; lng: number };
+export type { Distance, LatLng };
 
-export type Distance = {
-  durationSeconds: number | null;
-  distanceMeters: number | null;
-};
+const PER_PAIR_CONCURRENCY = 4;
 
-type DistanceMatrixElement = {
-  status: string;
-  duration?: { value: number };
-  distance?: { value: number };
-};
-
-type DistanceMatrixResponse = {
-  status: string;
-  error_message?: string;
-  rows?: Array<{ elements: DistanceMatrixElement[] }>;
-};
-
-const empty = (origins: LatLng[], destinations: LatLng[]): Distance[][] =>
-  origins.map(() =>
-    destinations.map(() => ({
-      durationSeconds: null,
-      distanceMeters: null,
-    })),
-  );
-
-// Returns an origins.length × destinations.length matrix of transit
-// distances. Quietly returns an all-null matrix on misconfiguration or
-// network failure so callers can fall back to "no data" UI without crashing.
 export async function fetchTransitDistances(
   origins: LatLng[],
   destinations: LatLng[],
 ): Promise<Distance[][]> {
   if (origins.length === 0 || destinations.length === 0) return [];
 
-  const apiKey = process.env.GOOGLE_MAPS_SERVER_KEY;
-  if (!apiKey) {
-    console.warn(
-      "GOOGLE_MAPS_SERVER_KEY is not set; Distance Matrix calls are skipped",
-    );
-    return empty(origins, destinations);
+  const departureTime = nextTuesdayMorningChicagoIso();
+
+  // Build a flat task list of (originIdx, destIdx) pairs and run them in
+  // parallel batches so we don't fan out 250+ requests at once.
+  type Task = { i: number; j: number };
+  const tasks: Task[] = [];
+  for (let i = 0; i < origins.length; i++) {
+    for (let j = 0; j < destinations.length; j++) {
+      tasks.push({ i, j });
+    }
   }
 
-  const params = new URLSearchParams({
-    origins: origins.map((o) => `${o.lat},${o.lng}`).join("|"),
-    destinations: destinations.map((d) => `${d.lat},${d.lng}`).join("|"),
-    mode: "transit",
-    departure_time: "now",
-    units: "metric",
-    key: apiKey,
-  });
+  const matrix: Distance[][] = origins.map(() =>
+    destinations.map(() => ({
+      durationSeconds: null,
+      distanceMeters: null,
+    })),
+  );
 
-  try {
-    const res = await fetch(`${ENDPOINT}?${params}`);
-    if (!res.ok) {
-      console.error("Distance Matrix HTTP", res.status, await res.text());
-      return empty(origins, destinations);
-    }
-    const data = (await res.json()) as DistanceMatrixResponse;
-    if (data.status !== "OK") {
-      console.error(
-        "Distance Matrix status",
-        data.status,
-        data.error_message,
-      );
-      return empty(origins, destinations);
-    }
-    return (data.rows ?? []).map((r) =>
-      r.elements.map((e) => {
-        if (e.status !== "OK") {
-          return { durationSeconds: null, distanceMeters: null };
-        }
-        return {
-          durationSeconds: e.duration?.value ?? null,
-          distanceMeters: e.distance?.value ?? null,
-        };
-      }),
+  for (let start = 0; start < tasks.length; start += PER_PAIR_CONCURRENCY) {
+    const slice = tasks.slice(start, start + PER_PAIR_CONCURRENCY);
+    const results = await Promise.all(
+      slice.map((t) =>
+        fetchFastestTransit(
+          origins[t.i],
+          destinations[t.j],
+          departureTime,
+        ),
+      ),
     );
-  } catch (err) {
-    console.error("Distance Matrix request failed:", err);
-    return empty(origins, destinations);
+    slice.forEach((t, k) => {
+      matrix[t.i][t.j] = results[k];
+    });
   }
+
+  return matrix;
 }

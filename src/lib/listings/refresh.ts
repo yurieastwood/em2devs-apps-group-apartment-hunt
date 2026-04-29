@@ -15,6 +15,10 @@ import type {
   ParsedListing,
   ParsedUnit,
 } from "../extract/types";
+import {
+  getPoiIdsInScope,
+  recomputeDistancesForListing,
+} from "../places/poi-distances";
 import { resolveNeighborhood } from "./resolve-neighborhood";
 
 type Headline = {
@@ -218,6 +222,21 @@ export async function refreshListing(
       lastCheckError: null,
     })
     .where(eq(listings.id, listingId));
+
+  // Recompute transit distances for this listing against every POI in
+  // scope. Routes API + "next Tuesday 8:30 AM Chicago" departure time
+  // means cached values stay current with the live transit schedule and
+  // model the user's commute scenario. Silent — same policy as schools /
+  // neighborhood / units.
+  if (current.latitude && current.longitude) {
+    const poiIds = await getPoiIdsInScope({
+      userId: current.ownerClerkUserId,
+      orgId: current.orgId ?? null,
+    });
+    if (poiIds.length > 0) {
+      await recomputeDistancesForListing(listingId, poiIds);
+    }
+  }
 
   // Re-sync schools so parser improvements heal existing rows. Same audit
   // policy as neighborhood / units — silent, no listing_changes row. Only

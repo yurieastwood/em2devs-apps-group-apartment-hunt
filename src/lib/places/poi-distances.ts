@@ -109,6 +109,26 @@ export async function invalidateDistancesForPoi(poiId: string): Promise<void> {
     .where(eq(listingPoiDistances.poiId, poiId));
 }
 
+// Force-recompute distances for a single listing against the supplied POIs.
+// Deletes the cached rows for those pairs first so `ensureDistances` re-
+// fetches them from the Routes API. Used by refresh flows so listing
+// distances stay current with the live transit schedule.
+export async function recomputeDistancesForListing(
+  listingId: string,
+  poiIds: string[],
+): Promise<void> {
+  if (poiIds.length === 0) return;
+  await db
+    .delete(listingPoiDistances)
+    .where(
+      and(
+        eq(listingPoiDistances.listingId, listingId),
+        inArray(listingPoiDistances.poiId, poiIds),
+      ),
+    );
+  await ensureDistances([listingId], poiIds);
+}
+
 export async function getListingIdsInScope(scope: Scope): Promise<string[]> {
   const where = scope.orgId
     ? eq(listings.orgId, scope.orgId)
