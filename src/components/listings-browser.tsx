@@ -125,6 +125,20 @@ function compareWithCriteria(
   return 0;
 }
 
+// Minimum characters before the search query starts narrowing the list. Below
+// this we ignore the query so a single typed character doesn't briefly hide
+// every listing.
+const SEARCH_MIN_CHARS = 2;
+
+function buildSearchHaystack(l: HomeListingItem): string {
+  const parts: string[] = [];
+  if (l.title) parts.push(l.title);
+  if (l.address) parts.push(l.address);
+  if (l.neighborhood) parts.push(l.neighborhood);
+  for (const lbl of l.labels) parts.push(lbl.name);
+  return parts.join(" ").toLowerCase();
+}
+
 const BEDS_OPTIONS = [0, 1, 2, 3, 4] as const;
 const BATHS_OPTIONS = [0, 1, 2, 3] as const;
 const RATING_OPTIONS = [0, 4, 7, 9] as const;
@@ -170,6 +184,7 @@ export function ListingsBrowser({
     new Set(),
   );
   const [hideUnavailable, setHideUnavailable] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const allNeighborhoods = useMemo(() => {
     const set = new Set<string>();
@@ -180,7 +195,12 @@ export function ListingsBrowser({
   }, [listings]);
 
   const visible = useMemo(() => {
+    const trimmed = searchQuery.trim().toLowerCase();
+    const search = trimmed.length >= SEARCH_MIN_CHARS ? trimmed : null;
     const filtered = listings.filter((l) => {
+      if (search !== null && !buildSearchHaystack(l).includes(search)) {
+        return false;
+      }
       if (minBeds > 0) {
         const b = asNum(l.bedrooms);
         if (b == null || b < minBeds) return false;
@@ -225,6 +245,7 @@ export function ListingsBrowser({
     activeLabels,
     activeNeighborhoods,
     hideUnavailable,
+    searchQuery,
   ]);
 
   function toggleLabel(id: string) {
@@ -301,6 +322,34 @@ export function ListingsBrowser({
     <div>
       <div className="mb-6">
         <HomeMap home={home} pins={visiblePins} pois={pois} />
+      </div>
+
+      <div className="mb-3 flex items-center gap-2">
+        <div className="relative flex-1 max-w-md">
+          <span
+            aria-hidden
+            className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm"
+          >
+            🔍
+          </span>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={`Search address, name, neighborhood, label… (${SEARCH_MIN_CHARS}+ chars)`}
+            className="w-full border border-border bg-input-background text-foreground rounded pl-7 pr-2 py-1.5 text-sm placeholder:text-muted-foreground"
+          />
+          {searchQuery ? (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-sm"
+            >
+              ×
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-xs">
