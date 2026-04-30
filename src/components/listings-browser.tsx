@@ -50,20 +50,15 @@ export type HomeListingItem = {
   labels: HomeLabel[];
 };
 
-type SortField =
-  | "priority"
-  | "createdAt"
-  | "price"
-  | "beds"
-  | "baths"
-  | "sqft"
-  | "pkRating";
+// SortField is now a free-form string so POI fields can encode their poiId
+// (e.g. "poi:abc-123"). Static fields keep their plain literals.
+type SortField = string;
 
 type SortDirection = "asc" | "desc";
 
 type SortCriterion = { field: SortField; direction: SortDirection };
 
-const ALL_SORT_FIELDS: SortField[] = [
+const STATIC_SORT_FIELDS: string[] = [
   "priority",
   "createdAt",
   "price",
@@ -73,7 +68,7 @@ const ALL_SORT_FIELDS: SortField[] = [
   "pkRating",
 ];
 
-const SORT_FIELD_LABEL: Record<SortField, string> = {
+const STATIC_SORT_FIELD_LABEL: Record<string, string> = {
   priority: "Priority",
   createdAt: "Date added",
   price: "Price",
@@ -87,7 +82,33 @@ const DEFAULT_SORT: SortCriterion[] = [
   { field: "priority", direction: "asc" },
 ];
 
-function fieldValue(field: SortField, l: HomeListingItem): number | null {
+const POI_FIELD_PREFIX = "poi:";
+
+function poiSortFieldId(poiId: string): string {
+  return `${POI_FIELD_PREFIX}${poiId}`;
+}
+
+function poiIdFromSortField(field: string): string | null {
+  return field.startsWith(POI_FIELD_PREFIX)
+    ? field.slice(POI_FIELD_PREFIX.length)
+    : null;
+}
+
+function sortFieldLabel(
+  field: string,
+  poiLabelById: Map<string, string>,
+): string {
+  const poiId = poiIdFromSortField(field);
+  if (poiId) return `🚌 ${poiLabelById.get(poiId) ?? "POI"}`;
+  return STATIC_SORT_FIELD_LABEL[field] ?? field;
+}
+
+function fieldValue(field: string, l: HomeListingItem): number | null {
+  const poiId = poiIdFromSortField(field);
+  if (poiId) {
+    const d = l.poiDistances.find((x) => x.poiId === poiId);
+    return d?.durationSeconds ?? null;
+  }
   switch (field) {
     case "priority":
       return l.priority;
@@ -103,6 +124,8 @@ function fieldValue(field: SortField, l: HomeListingItem): number | null {
       return l.squareFeet;
     case "pkRating":
       return l.nearestPkRating;
+    default:
+      return null;
   }
 }
 
@@ -304,7 +327,19 @@ export function ListingsBrowser({
     });
   }
 
-  const availableSortFields = ALL_SORT_FIELDS.filter(
+  // Static sort fields plus one per POI in scope.
+  const allSortFields = useMemo(
+    () => [
+      ...STATIC_SORT_FIELDS,
+      ...(pois ?? []).map((p) => poiSortFieldId(p.id)),
+    ],
+    [pois],
+  );
+  const poiLabelById = useMemo(
+    () => new Map((pois ?? []).map((p) => [p.id, p.label])),
+    [pois],
+  );
+  const availableSortFields = allSortFields.filter(
     (f) => !sortCriteria.some((c) => c.field === f),
   );
 
@@ -363,6 +398,7 @@ export function ListingsBrowser({
         <SortBuilder
           criteria={sortCriteria}
           available={availableSortFields}
+          poiLabelById={poiLabelById}
           onAdd={addSortField}
           onRemove={removeSortAt}
           onToggleDirection={toggleDirectionAt}
@@ -441,6 +477,7 @@ export function ListingsBrowser({
 function SortBuilder({
   criteria,
   available,
+  poiLabelById,
   onAdd,
   onRemove,
   onToggleDirection,
@@ -448,6 +485,7 @@ function SortBuilder({
 }: {
   criteria: SortCriterion[];
   available: SortField[];
+  poiLabelById: Map<string, string>;
   onAdd: (f: SortField) => void;
   onRemove: (i: number) => void;
   onToggleDirection: (i: number) => void;
@@ -460,6 +498,7 @@ function SortBuilder({
         <SortChip
           key={`${c.field}-${i}`}
           criterion={c}
+          label={sortFieldLabel(c.field, poiLabelById)}
           isFirst={i === 0}
           isLast={i === criteria.length - 1}
           onToggleDirection={() => onToggleDirection(i)}
@@ -481,7 +520,7 @@ function SortBuilder({
           <option value="">+ Add field</option>
           {available.map((f) => (
             <option key={f} value={f}>
-              {SORT_FIELD_LABEL[f]}
+              {sortFieldLabel(f, poiLabelById)}
             </option>
           ))}
         </select>
@@ -492,6 +531,7 @@ function SortBuilder({
 
 function SortChip({
   criterion,
+  label,
   isFirst,
   isLast,
   onToggleDirection,
@@ -500,6 +540,7 @@ function SortChip({
   onMoveDown,
 }: {
   criterion: SortCriterion;
+  label: string;
   isFirst: boolean;
   isLast: boolean;
   onToggleDirection: () => void;
@@ -525,8 +566,7 @@ function SortChip({
         className="font-medium"
         title="Toggle direction"
       >
-        {SORT_FIELD_LABEL[criterion.field]}{" "}
-        {criterion.direction === "asc" ? "↑" : "↓"}
+        {label} {criterion.direction === "asc" ? "↑" : "↓"}
       </button>
       {!isLast ? (
         <button
