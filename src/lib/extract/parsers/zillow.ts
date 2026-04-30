@@ -212,31 +212,40 @@ function extractFloorPlans(building: Json): ParsedUnit[] {
 }
 
 function extractBuildingPhotos(building: Json): ListingPhoto[] {
-  const candidates: Json[] = [
+  // Union all known photo arrays a building exposes (verified via real
+  // sample). Dedup by url so a photo present in both `photos` and
+  // `galleryPhotos` only counts once.
+  const sources: Json[] = [
     get(building, "photos"),
-    get(building, "mediaSlideShow"),
-    get(building, "buildingMedia"),
-    get(building, "mediaItems"),
+    get(building, "galleryPhotos"),
+    get(building, "signaturePhotos"),
+    get(building, "galleryAmenityPhotos"),
+    get(building, "amenityPhotos"),
   ];
-  let list: Json[] = [];
-  for (const c of candidates) {
-    if (Array.isArray(c) && c.length > 0) {
-      list = c;
-      break;
-    }
+  const allRaw: Json[] = [];
+  for (const c of sources) {
+    if (Array.isArray(c)) allRaw.push(...c);
   }
+  if (allRaw.length === 0) return [];
+
+  const seen = new Set<string>();
   const out: ListingPhoto[] = [];
-  for (const p of list) {
+  for (const p of allRaw) {
     const url =
       asString(get(p, "url")) ??
       asString(get(p, "imageURL")) ??
       asString(get(p, "src"));
-    if (!url) {
-      const mixed = pickLargestJpeg(get(p, "mixedSources"));
-      if (mixed) out.push(mixed);
+    if (url) {
+      if (seen.has(url)) continue;
+      seen.add(url);
+      out.push({ url });
       continue;
     }
-    out.push({ url });
+    const mixed = pickLargestJpeg(get(p, "mixedSources"));
+    if (mixed && !seen.has(mixed.url)) {
+      seen.add(mixed.url);
+      out.push(mixed);
+    }
   }
   return out;
 }

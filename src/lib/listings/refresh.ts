@@ -1,7 +1,8 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   listingChanges,
+  listingPhotos,
   listingSchools,
   listings,
   type Listing,
@@ -19,6 +20,7 @@ import {
   getPoiIdsInScope,
   recomputeDistancesForListing,
 } from "../places/poi-distances";
+import { rehostListingPhotos } from "./rehost-photos";
 import { resolveNeighborhood } from "./resolve-neighborhood";
 
 type Headline = {
@@ -263,6 +265,46 @@ export async function refreshListing(
         lng: s.lng?.toString() ?? null,
       })),
     );
+  }
+
+  // Photo healing: backfills photos for listings that came in before a
+  // parser improvement (e.g. pre-Slice 3.9 Zillow building imports lacked
+  // a building-aware photo extractor and ended up with zero photos). Only
+  // rehosts when the listing currently has no photos AND the parser
+  // produced some — never re-rehosts an already-populated listing, since
+  // R2 storage churn isn't free.
+  if (parsed.photos.length > 0) {
+    const [{ count: photoCount }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(listingPhotos)
+      .where(eq(listingPhotos.listingId, listingId));
+    if (photoCount === 0) {
+      const { photos: rehosted, errors: photoErrors } =
+        await rehostListingPhotos(listingId, parsed.photos);
+      if (rehosted.length > 0) {
+        await db.insert(listingPhotos).values(
+          rehosted.map((p) => ({
+            listingId,
+            sortOrder: p.sortOrder,
+            r2Key: p.r2Key,
+            originalUrl: p.originalUrl,
+            contentType: p.contentType,
+            width: p.width ?? null,
+            height: p.height ?? null,
+          })),
+        );
+      }
+      if (photoErrors.length > 0) {
+        const rawObj =
+          parsed.raw && typeof parsed.raw === "object" ? parsed.raw : {};
+        await db
+          .update(listings)
+          .set({
+            raw: { ...rawObj, photoErrors: photoErrors.slice(0, 10) },
+          })
+          .where(eq(listings.id, listingId));
+      }
+    }
   }
 
   return { kind: "ok", changes: changes.length, listingId };
