@@ -188,11 +188,13 @@ export async function refreshListing(
 
   const neighborhood = await resolveNeighborhood({
     parsed: parsed.neighborhood,
+    current: current.neighborhood,
     latitude: parsed.latitude,
     longitude: parsed.longitude,
   });
   const district = await resolveDistrict({
     parsed: parsed.district,
+    current: current.district,
     latitude: parsed.latitude,
     longitude: parsed.longitude,
   });
