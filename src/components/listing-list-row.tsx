@@ -71,7 +71,11 @@ export function ListingListRow({
   return (
     <li
       data-listing-id={listingId}
-      className={selected ? "ring-2 ring-primary ring-offset-2 rounded" : ""}
+      className={
+        selected
+          ? "ring-2 ring-primary ring-offset-2 rounded bg-primary/20"
+          : ""
+      }
     >
       <div className="flex items-center gap-4 px-3 py-2 hover:bg-muted/40 transition-colors">
         <div className="flex-1 min-w-0">

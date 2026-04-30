@@ -751,7 +751,9 @@ function useScrollToSelected<T extends HTMLElement>(
 }
 
 function highlightRingClass(isSelected: boolean): string {
-  return isSelected ? "ring-2 ring-primary ring-offset-2" : "";
+  return isSelected
+    ? "ring-2 ring-primary ring-offset-2 bg-primary/20"
+    : "";
 }
 
 function CardsView({
@@ -989,7 +991,9 @@ function TableRow({
     <tr
       data-listing-id={l.id}
       className={`hover:bg-muted/40 transition-colors align-top ${
-        selected ? "bg-primary/10" : ""
+        selected
+          ? "bg-primary/25 outline outline-2 outline-primary"
+          : ""
       }`}
     >
       <td className="px-3 py-2 whitespace-nowrap">
