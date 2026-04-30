@@ -87,11 +87,19 @@ export async function createListingFromUrl(
     latitude: parsed.latitude,
     longitude: parsed.longitude,
   });
-  const district = await resolveDistrict({
+  let district = await resolveDistrict({
     parsed: parsed.district,
     latitude: parsed.latitude,
     longitude: parsed.longitude,
   });
+  // De-dupe — same as refresh.ts.
+  if (
+    district &&
+    neighborhood &&
+    district.toLowerCase() === neighborhood.toLowerCase()
+  ) {
+    district = null;
+  }
 
   const [inserted] = await db
     .insert(listings)

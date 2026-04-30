@@ -192,12 +192,22 @@ export async function refreshListing(
     latitude: parsed.latitude,
     longitude: parsed.longitude,
   });
-  const district = await resolveDistrict({
+  let district = await resolveDistrict({
     parsed: parsed.district,
     current: current.district,
     latitude: parsed.latitude,
     longitude: parsed.longitude,
   });
+  // De-dupe: if parser-derived neighborhood and Nominatim-derived district
+  // happen to be the same name, drop the district so we don't show the same
+  // value in both columns.
+  if (
+    district &&
+    neighborhood &&
+    district.toLowerCase() === neighborhood.toLowerCase()
+  ) {
+    district = null;
+  }
 
   if (changes.length > 0) {
     await db.insert(listingChanges).values(

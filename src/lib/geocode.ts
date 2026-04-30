@@ -67,17 +67,22 @@ export async function reverseGeocodeAddress(
     if (!res.ok) return null;
     const data = (await res.json()) as { address?: Record<string, unknown> };
     const addr = data.address ?? {};
+    // OSM uses different keys at different granularities. In Chicago for
+    // example: `neighbourhood` is the most-specific named area (e.g.
+    // "Illinois Medical District"), `suburb` is the community-area level
+    // (e.g. "Near West Side"). Pick the most specific name available for
+    // `neighborhood`, and only emit `district` when it's strictly broader
+    // than the neighborhood we picked — otherwise we'd duplicate the same
+    // name into both columns.
+    const granular = asNonEmpty(addr.neighbourhood) ?? asNonEmpty(addr.quarter);
+    const broader =
+      asNonEmpty(addr.suburb) ??
+      asNonEmpty(addr.city_district) ??
+      asNonEmpty(addr.borough) ??
+      asNonEmpty(addr.district);
     return {
-      neighborhood:
-        asNonEmpty(addr.neighbourhood) ??
-        asNonEmpty(addr.suburb) ??
-        asNonEmpty(addr.quarter) ??
-        null,
-      district:
-        asNonEmpty(addr.city_district) ??
-        asNonEmpty(addr.borough) ??
-        asNonEmpty(addr.district) ??
-        null,
+      neighborhood: granular ?? broader ?? null,
+      district: granular ? broader : null,
     };
   } catch (err) {
     console.error("Nominatim reverse-geocode failed:", err);
