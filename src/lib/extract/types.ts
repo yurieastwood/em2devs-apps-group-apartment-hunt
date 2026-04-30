@@ -48,6 +48,7 @@ export type ParsedListing = {
   priceUsd: number | null;
   description: string | null;
   neighborhood: string | null;
+  district: string | null;
   availability: Availability;
   units: ParsedUnit[] | null;
   photos: ListingPhoto[];

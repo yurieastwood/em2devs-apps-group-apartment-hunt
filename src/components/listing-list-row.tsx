@@ -42,6 +42,7 @@ export type ListingListRowProps = {
   priority?: number | null;
   availability?: string;
   neighborhood?: string | null;
+  district?: string | null;
   listingLat?: number | null;
   listingLng?: number | null;
   selected?: boolean;
@@ -62,6 +63,7 @@ export function ListingListRow({
   priority,
   availability,
   neighborhood,
+  district,
   listingLat,
   listingLng,
   selected,
@@ -93,7 +95,11 @@ export function ListingListRow({
             ) : null}
           </div>
           <p className="text-sm text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
-            {neighborhood ? <span>📍 {neighborhood}</span> : null}
+            {neighborhood || district ? (
+              <span>
+                📍 {[neighborhood, district].filter(Boolean).join(" · ")}
+              </span>
+            ) : null}
             {bedrooms ? <span>{bedrooms} BR</span> : null}
             {bathrooms ? <span>{bathrooms} BA</span> : null}
             {squareFeet ? (

@@ -83,16 +83,29 @@ function extractSchools(source: Json): ParsedSchool[] {
   return out;
 }
 
-// Zillow surfaces neighborhood under a few different shapes depending on
-// listing type. Probe in order of specificity, first hit wins.
+// Strict neighborhood: only fields that actually carry neighborhood-level
+// data. We deliberately do NOT fall through to `parentRegion.name` here,
+// since that's the district — its own field below.
 function extractNeighborhood(property: Json): string | null {
   return (
     asString(get(property, "neighborhoodRegion", "name")) ??
-    asString(get(property, "parentRegion", "name")) ??
     asString(get(property, "address", "neighborhood")) ??
     asString(get(property, "neighborhood")) ??
     null
   );
+}
+
+// District: the broader region containing the neighborhood. We only return
+// it when it differs from the neighborhood (Zillow sometimes sets both to
+// the same value, in which case there's no district worth recording).
+function extractDistrict(
+  property: Json,
+  neighborhood: string | null,
+): string | null {
+  const parent = asString(get(property, "parentRegion", "name"));
+  if (!parent) return null;
+  if (neighborhood && parent.trim() === neighborhood.trim()) return null;
+  return parent;
 }
 
 // Zillow's homeStatus values: FOR_RENT / FOR_SALE → available; RECENTLY_RENTED
@@ -310,6 +323,9 @@ function parseZillowBuilding(
     neighborhood:
       asString(get(building, "neighborhoodRegion", "name")) ??
       asString(get(building, "neighborhood")),
+    // Building data doesn't expose a confirmed district field in our samples;
+    // leave null until we add a Places-API fallback.
+    district: null,
     availability: "available",
     units: units.length > 0 ? units : null,
     photos: extractBuildingPhotos(building),
@@ -361,6 +377,7 @@ export function parseZillow(sourceUrl: string, html: string): ParsedListing {
     priceUsd: asNum(get(ld, "offers", "price")) ?? asNum(get(property, "price")),
     description: asString(get(property, "description")),
     neighborhood: extractNeighborhood(property),
+    district: extractDistrict(property, extractNeighborhood(property)),
     availability: extractAvailability(property),
     units: null,
     photos: extractPhotos(property),

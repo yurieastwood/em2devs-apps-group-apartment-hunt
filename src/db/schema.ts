@@ -35,6 +35,7 @@ export const listings = pgTable(
     priority: integer("priority"),
     description: text("description"),
     neighborhood: text("neighborhood"),
+    district: text("district"),
     units: jsonb("units"),
     headlineLocked: boolean("headline_locked").notNull().default(false),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),

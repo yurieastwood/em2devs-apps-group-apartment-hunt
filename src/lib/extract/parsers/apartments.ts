@@ -182,6 +182,7 @@ export function parseApartments(
       asString(get(graph0, "description")) ??
       asString(get(firstRental, "Description")),
     neighborhood: extractNeighborhood(firstRental, html),
+    district: null,
     availability: extractAvailability(graph0, html),
     units: null,
     photos: extractPhotos(graph0),

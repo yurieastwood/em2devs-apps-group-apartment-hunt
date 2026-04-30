@@ -34,6 +34,7 @@ export type HomeListingItem = {
   title: string | null;
   address: string | null;
   neighborhood: string | null;
+  district: string | null;
   bedrooms: string | null;
   bathrooms: string | null;
   squareFeet: number | null;
@@ -186,6 +187,17 @@ function asNum(s: string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// "Hyde Park · South Side" when both, or just whichever is set, or null.
+function fmtLocale(
+  neighborhood: string | null,
+  district: string | null,
+): string | null {
+  const parts = [neighborhood, district].filter(
+    (p): p is string => p != null && p.length > 0,
+  );
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 function fmtPrice(n: number | null): string | null {
   return n == null ? null : `$${n.toLocaleString("en-US")}/mo`;
 }
@@ -213,6 +225,9 @@ export function ListingsBrowser({
   const [activeNeighborhoods, setActiveNeighborhoods] = useState<Set<string>>(
     new Set(),
   );
+  const [activeDistricts, setActiveDistricts] = useState<Set<string>>(
+    new Set(),
+  );
   const [hideUnavailable, setHideUnavailable] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedListingId, setSelectedListingId] = useState<string | null>(
@@ -224,6 +239,14 @@ export function ListingsBrowser({
     const set = new Set<string>();
     for (const l of listings) {
       if (l.neighborhood) set.add(l.neighborhood);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [listings]);
+
+  const allDistricts = useMemo(() => {
+    const set = new Set<string>();
+    for (const l of listings) {
+      if (l.district) set.add(l.district);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [listings]);
@@ -261,6 +284,11 @@ export function ListingsBrowser({
           return false;
         }
       }
+      if (activeDistricts.size > 0) {
+        if (!l.district || !activeDistricts.has(l.district)) {
+          return false;
+        }
+      }
       return true;
     });
 
@@ -278,6 +306,7 @@ export function ListingsBrowser({
     minPkRating,
     activeLabels,
     activeNeighborhoods,
+    activeDistricts,
     hideUnavailable,
     searchQuery,
   ]);
@@ -293,6 +322,15 @@ export function ListingsBrowser({
 
   function toggleNeighborhood(name: string) {
     setActiveNeighborhoods((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
+
+  function toggleDistrict(name: string) {
+    setActiveDistricts((prev) => {
       const next = new Set(prev);
       if (next.has(name)) next.delete(name);
       else next.add(name);
@@ -448,10 +486,19 @@ export function ListingsBrowser({
           />
         ) : null}
         {allNeighborhoods.length > 0 ? (
-          <NeighborhoodFilterGroup
-            neighborhoods={allNeighborhoods}
+          <TextFilterGroup
+            label="Neighborhood"
+            values={allNeighborhoods}
             active={activeNeighborhoods}
             onToggle={toggleNeighborhood}
+          />
+        ) : null}
+        {allDistricts.length > 0 ? (
+          <TextFilterGroup
+            label="District"
+            values={allDistricts}
+            active={activeDistricts}
+            onToggle={toggleDistrict}
           />
         ) : null}
         <button
@@ -664,26 +711,28 @@ function LabelFilterGroup({
   );
 }
 
-function NeighborhoodFilterGroup({
-  neighborhoods,
+function TextFilterGroup({
+  label,
+  values,
   active,
   onToggle,
 }: {
-  neighborhoods: string[];
+  label: string;
+  values: string[];
   active: Set<string>;
   onToggle: (name: string) => void;
 }) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-muted-foreground">Neighborhood</span>
+      <span className="text-muted-foreground">{label}</span>
       <div className="flex flex-wrap gap-1">
-        {neighborhoods.map((n) => {
-          const on = active.has(n);
+        {values.map((v) => {
+          const on = active.has(v);
           return (
             <button
-              key={n}
+              key={v}
               type="button"
-              onClick={() => onToggle(n)}
+              onClick={() => onToggle(v)}
               aria-pressed={on}
               className={`px-2 py-0.5 rounded border text-xs transition-opacity ${
                 on
@@ -691,7 +740,7 @@ function NeighborhoodFilterGroup({
                   : "border-border hover:bg-muted text-muted-foreground"
               }`}
             >
-              {n}
+              {v}
             </button>
           );
         })}
@@ -805,9 +854,9 @@ function CardsView({
                 </p>
                 <UnavailableBadge availability={l.availability} />
               </div>
-              {l.neighborhood ? (
+              {fmtLocale(l.neighborhood, l.district) ? (
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  📍 {l.neighborhood}
+                  📍 {fmtLocale(l.neighborhood, l.district)}
                 </p>
               ) : null}
               <p className="text-sm text-muted-foreground mt-1 flex flex-wrap gap-x-3">
@@ -918,6 +967,7 @@ function ListView({
           priority={l.priority}
           availability={l.availability}
           neighborhood={l.neighborhood}
+          district={l.district}
           listingLat={l.latitude}
           listingLng={l.longitude}
           selected={selectedListingId === l.id}
@@ -1032,12 +1082,12 @@ function TableRow({
           {l.address ?? l.title ?? "Unknown address"}
         </Link>
       </td>
-      <td className="px-3 py-2 text-muted-foreground text-xs max-w-[120px]">
+      <td className="px-3 py-2 text-muted-foreground text-xs max-w-[140px]">
         <span
           className="line-clamp-2"
-          title={l.neighborhood ?? undefined}
+          title={fmtLocale(l.neighborhood, l.district) ?? undefined}
         >
-          {l.neighborhood ?? "—"}
+          {fmtLocale(l.neighborhood, l.district) ?? "—"}
         </span>
       </td>
       <td className="px-3 py-2 text-right tabular-nums">

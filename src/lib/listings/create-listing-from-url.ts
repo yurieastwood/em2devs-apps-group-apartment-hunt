@@ -9,7 +9,10 @@ import { parseZillow } from "../extract/parsers/zillow";
 import type { ParsedListing } from "../extract/types";
 import { normalizeListingUrl } from "../url-normalize";
 import { rehostListingPhotos } from "./rehost-photos";
-import { resolveNeighborhood } from "./resolve-neighborhood";
+import {
+  resolveDistrict,
+  resolveNeighborhood,
+} from "./resolve-neighborhood";
 
 type Parser = (url: string, html: string) => ParsedListing;
 
@@ -80,7 +83,12 @@ export async function createListingFromUrl(
   const parsed = parser(sourceUrl, fetched.html);
 
   const neighborhood = await resolveNeighborhood({
-    parsedNeighborhood: parsed.neighborhood,
+    parsed: parsed.neighborhood,
+    latitude: parsed.latitude,
+    longitude: parsed.longitude,
+  });
+  const district = await resolveDistrict({
+    parsed: parsed.district,
     latitude: parsed.latitude,
     longitude: parsed.longitude,
   });
@@ -106,6 +114,7 @@ export async function createListingFromUrl(
       priceUsd: parsed.priceUsd,
       description: parsed.description,
       neighborhood,
+      district,
       availability: parsed.availability,
       units: parsed.units,
       lastCheckedAt: new Date(),

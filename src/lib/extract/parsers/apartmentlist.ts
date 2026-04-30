@@ -198,6 +198,7 @@ export function parseApartmentList(
       asString(get(listing, "description")) ??
       asString(get(ld, "description")),
     neighborhood: asString(get(listing, "neighborhood")),
+    district: null,
     availability: extractAvailability(listing, html),
     units: units.length > 1 ? units : null,
     photos: extractPhotos(listing),

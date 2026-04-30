@@ -21,7 +21,10 @@ import {
   recomputeDistancesForListing,
 } from "../places/poi-distances";
 import { rehostListingPhotos } from "./rehost-photos";
-import { resolveNeighborhood } from "./resolve-neighborhood";
+import {
+  resolveDistrict,
+  resolveNeighborhood,
+} from "./resolve-neighborhood";
 
 type Headline = {
   beds: number | null;
@@ -184,7 +187,12 @@ export async function refreshListing(
   const changes = diffListing(current, headline.price, parsed.availability);
 
   const neighborhood = await resolveNeighborhood({
-    parsedNeighborhood: parsed.neighborhood,
+    parsed: parsed.neighborhood,
+    latitude: parsed.latitude,
+    longitude: parsed.longitude,
+  });
+  const district = await resolveDistrict({
+    parsed: parsed.district,
     latitude: parsed.latitude,
     longitude: parsed.longitude,
   });
@@ -219,6 +227,7 @@ export async function refreshListing(
       headlineLocked: headline.locked,
       availability: parsed.availability,
       neighborhood,
+      district,
       units: parsed.units,
       lastCheckedAt: now,
       lastCheckError: null,
