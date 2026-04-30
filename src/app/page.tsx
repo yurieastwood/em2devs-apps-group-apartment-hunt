@@ -258,7 +258,11 @@ export default async function HomePage() {
   }));
 
   return (
-    <main className="flex-1 max-w-5xl mx-auto p-8 w-full">
+    <main
+      className={`flex-1 mx-auto p-8 w-full ${
+        viewMode === "table" ? "max-w-7xl" : "max-w-5xl"
+      }`}
+    >
       <section className="mb-8">
         {isAdmin ? (
           <HomeSettingsForm

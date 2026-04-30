@@ -828,26 +828,33 @@ function TableRow({ listing: l }: { listing: HomeListingItem }) {
       </td>
       <td className="px-3 py-2">
         {l.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={l.coverUrl}
-            alt=""
-            className="w-12 h-9 object-cover rounded"
-            loading="lazy"
-          />
+          <button
+            type="button"
+            onClick={() => setLightboxOpen(true)}
+            className="block hover:opacity-80 transition-opacity"
+            title="Show photo"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={l.coverUrl}
+              alt="Show photo"
+              className="w-16 h-12 object-cover rounded"
+              loading="lazy"
+            />
+          </button>
         ) : (
-          <div className="w-12 h-9 rounded bg-muted" />
+          <div className="w-16 h-12 rounded bg-muted" />
         )}
       </td>
-      <td className="px-3 py-2 max-w-xs">
+      <td className="px-3 py-2 min-w-[260px]">
         <Link
           href={`/listings/${l.id}`}
-          className="font-medium hover:underline"
+          className="font-medium hover:underline whitespace-nowrap"
         >
           {l.address ?? l.title ?? "Unknown address"}
         </Link>
       </td>
-      <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
+      <td className="px-3 py-2 text-muted-foreground text-xs max-w-[120px] break-words">
         {l.neighborhood ?? "—"}
       </td>
       <td className="px-3 py-2 text-right tabular-nums">
@@ -882,13 +889,15 @@ function TableRow({ listing: l }: { listing: HomeListingItem }) {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:underline hover:text-foreground"
+                  className="hover:underline hover:text-foreground whitespace-nowrap"
                   title="Open transit directions in Google Maps"
                 >
                   {text}
                 </a>
               ) : (
-                <span key={d.poiId}>{text}</span>
+                <span key={d.poiId} className="whitespace-nowrap">
+                  {text}
+                </span>
               );
             })}
           </div>
@@ -916,16 +925,7 @@ function TableRow({ listing: l }: { listing: HomeListingItem }) {
         <UnavailableBadge availability={l.availability} />
       </td>
       <td className="px-3 py-2 text-right whitespace-nowrap">
-        <div className="inline-flex items-center gap-3">
-          {l.coverUrl ? (
-            <button
-              type="button"
-              onClick={() => setLightboxOpen(true)}
-              className="text-xs text-primary hover:underline"
-            >
-              Show photo
-            </button>
-          ) : null}
+        <div className="inline-flex flex-col items-end gap-1">
           {l.canDelete ? (
             <DeleteListingButton
               listingId={l.id}
