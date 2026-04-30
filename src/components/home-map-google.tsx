@@ -17,6 +17,7 @@ export type HomeMapPin = {
   lng: number;
   label: string;
   href?: string;
+  priority?: number | null;
 };
 
 export type HomeMapPoi = {
@@ -32,6 +33,8 @@ export type HomeMapGoogleProps = {
   home: { lat: number; lng: number; label: string } | null;
   pins: HomeMapPin[];
   pois?: HomeMapPoi[];
+  selectedPinId?: string | null;
+  onPinSelect?: (id: string) => void;
 };
 
 const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -40,6 +43,8 @@ export function HomeMapGoogle({
   home,
   pins,
   pois = [],
+  selectedPinId,
+  onPinSelect,
 }: HomeMapGoogleProps) {
   const positions: Array<{ lat: number; lng: number }> = [];
   if (home) positions.push({ lat: home.lat, lng: home.lng });
@@ -83,7 +88,12 @@ export function HomeMapGoogle({
             <PoiMarker key={p.id} poi={p} />
           ))}
           {pins.map((pin) => (
-            <ListingMarker key={pin.id} pin={pin} />
+            <ListingMarker
+              key={pin.id}
+              pin={pin}
+              isSelected={selectedPinId === pin.id}
+              onSelect={onPinSelect}
+            />
           ))}
         </Map>
       </APIProvider>
@@ -157,18 +167,32 @@ function PoiMarker({ poi }: { poi: HomeMapPoi }) {
   );
 }
 
-function ListingMarker({ pin }: { pin: HomeMapPin }) {
-  const [open, setOpen] = useState(false);
+function ListingMarker({
+  pin,
+  isSelected,
+  onSelect,
+}: {
+  pin: HomeMapPin;
+  isSelected: boolean;
+  onSelect?: (id: string) => void;
+}) {
+  const glyph =
+    pin.priority != null && pin.priority > 0 ? String(pin.priority) : undefined;
   return (
     <AdvancedMarker
       position={{ lat: pin.lat, lng: pin.lng }}
-      onClick={() => setOpen((v) => !v)}
+      onClick={() => onSelect?.(pin.id)}
     >
-      <Pin background="#2563eb" borderColor="#1e40af" glyphColor="#ffffff" />
-      {open ? (
+      <Pin
+        background="#2563eb"
+        borderColor="#1e40af"
+        glyphColor="#ffffff"
+        glyph={glyph}
+      />
+      {isSelected ? (
         <InfoWindow
           position={{ lat: pin.lat, lng: pin.lng }}
-          onCloseClick={() => setOpen(false)}
+          onCloseClick={() => onSelect?.(pin.id)}
         >
           {pin.href ? (
             <a

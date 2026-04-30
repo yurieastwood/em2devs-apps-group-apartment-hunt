@@ -44,6 +44,7 @@ export type ListingListRowProps = {
   neighborhood?: string | null;
   listingLat?: number | null;
   listingLng?: number | null;
+  selected?: boolean;
 };
 
 export function ListingListRow({
@@ -63,11 +64,15 @@ export function ListingListRow({
   neighborhood,
   listingLat,
   listingLng,
+  selected,
 }: ListingListRowProps) {
   const [open, setOpen] = useState(false);
 
   return (
-    <li>
+    <li
+      data-listing-id={listingId}
+      className={selected ? "ring-2 ring-primary ring-offset-2 rounded" : ""}
+    >
       <div className="flex items-center gap-4 px-3 py-2 hover:bg-muted/40 transition-colors">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">

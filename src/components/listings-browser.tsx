@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
@@ -215,6 +215,10 @@ export function ListingsBrowser({
   );
   const [hideUnavailable, setHideUnavailable] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedListingId, setSelectedListingId] = useState<string | null>(
+    null,
+  );
+  const [autoScroll, setAutoScroll] = useState(true);
 
   const allNeighborhoods = useMemo(() => {
     const set = new Set<string>();
@@ -356,14 +360,25 @@ export function ListingsBrowser({
           lng: l.longitude,
           label: l.address ?? l.title ?? "Listing",
           href: `/listings/${l.id}`,
+          priority: l.priority,
         })),
     [visible],
   );
 
+  function togglePinSelection(id: string) {
+    setSelectedListingId((prev) => (prev === id ? null : id));
+  }
+
   return (
     <div>
       <div className="mb-6">
-        <HomeMap home={home} pins={visiblePins} pois={pois} />
+        <HomeMap
+          home={home}
+          pins={visiblePins}
+          pois={pois}
+          selectedPinId={selectedListingId}
+          onPinSelect={togglePinSelection}
+        />
       </div>
 
       <div className="mb-3 flex items-center gap-2">
@@ -451,6 +466,19 @@ export function ListingsBrowser({
         >
           Hide unavailable
         </button>
+        <button
+          type="button"
+          onClick={() => setAutoScroll((v) => !v)}
+          aria-pressed={autoScroll}
+          title="When on, clicking a pin scrolls the matching listing into view"
+          className={`px-2 py-0.5 rounded border transition-colors ${
+            autoScroll
+              ? "bg-primary/15 border-primary text-foreground"
+              : "border-border hover:bg-muted text-muted-foreground"
+          }`}
+        >
+          Scroll to pin
+        </button>
       </div>
 
       <p className="text-xs text-muted-foreground mb-4">
@@ -464,11 +492,23 @@ export function ListingsBrowser({
       {visible.length === 0 ? (
         <p className="text-muted-foreground">No listings match these filters.</p>
       ) : viewMode === "cards" ? (
-        <CardsView listings={visible} />
+        <CardsView
+          listings={visible}
+          selectedListingId={selectedListingId}
+          autoScroll={autoScroll}
+        />
       ) : viewMode === "table" ? (
-        <TableView listings={visible} />
+        <TableView
+          listings={visible}
+          selectedListingId={selectedListingId}
+          autoScroll={autoScroll}
+        />
       ) : (
-        <ListView listings={visible} />
+        <ListView
+          listings={visible}
+          selectedListingId={selectedListingId}
+          autoScroll={autoScroll}
+        />
       )}
     </div>
   );
@@ -685,13 +725,60 @@ function LabelChips({ labels }: { labels: HomeLabel[] }) {
   );
 }
 
-function CardsView({ listings }: { listings: HomeListingItem[] }) {
+// Shared: when `selectedId` changes and `enabled` is true, scroll the row
+// matching `data-listing-id={selectedId}` into view. Returns a ref to attach
+// to the scroll container.
+function useScrollToSelected<T extends HTMLElement>(
+  selectedId: string | null,
+  enabled: boolean,
+) {
+  const ref = useRef<T | null>(null);
+  useEffect(() => {
+    if (!enabled || !selectedId) return;
+    const container = ref.current;
+    if (!container) return;
+    const el = container.querySelector(
+      `[data-listing-id="${CSS.escape(selectedId)}"]`,
+    );
+    if (el && "scrollIntoView" in el) {
+      (el as HTMLElement).scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [selectedId, enabled]);
+  return ref;
+}
+
+function highlightRingClass(isSelected: boolean): string {
+  return isSelected ? "ring-2 ring-primary ring-offset-2" : "";
+}
+
+function CardsView({
+  listings,
+  selectedListingId,
+  autoScroll,
+}: {
+  listings: HomeListingItem[];
+  selectedListingId: string | null;
+  autoScroll: boolean;
+}) {
+  const ref = useScrollToSelected<HTMLUListElement>(
+    selectedListingId,
+    autoScroll,
+  );
   return (
-    <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <ul
+      ref={ref}
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+    >
       {listings.map((l) => (
         <li
           key={l.id}
-          className="rounded-lg overflow-hidden border border-border bg-muted hover:opacity-95 transition relative"
+          data-listing-id={l.id}
+          className={`rounded-lg overflow-hidden border border-border bg-muted hover:opacity-95 transition relative ${highlightRingClass(
+            selectedListingId === l.id,
+          )}`}
         >
           <Link href={`/listings/${l.id}`} className="block">
             <div className="aspect-[4/3] bg-muted">
@@ -794,9 +881,24 @@ function CardsView({ listings }: { listings: HomeListingItem[] }) {
   );
 }
 
-function ListView({ listings }: { listings: HomeListingItem[] }) {
+function ListView({
+  listings,
+  selectedListingId,
+  autoScroll,
+}: {
+  listings: HomeListingItem[];
+  selectedListingId: string | null;
+  autoScroll: boolean;
+}) {
+  const ref = useScrollToSelected<HTMLUListElement>(
+    selectedListingId,
+    autoScroll,
+  );
   return (
-    <ul className="border border-border rounded divide-y divide-border">
+    <ul
+      ref={ref}
+      className="border border-border rounded divide-y divide-border"
+    >
       {listings.map((l) => (
         <ListingListRow
           key={l.id}
@@ -816,15 +918,31 @@ function ListView({ listings }: { listings: HomeListingItem[] }) {
           neighborhood={l.neighborhood}
           listingLat={l.latitude}
           listingLng={l.longitude}
+          selected={selectedListingId === l.id}
         />
       ))}
     </ul>
   );
 }
 
-function TableView({ listings }: { listings: HomeListingItem[] }) {
+function TableView({
+  listings,
+  selectedListingId,
+  autoScroll,
+}: {
+  listings: HomeListingItem[];
+  selectedListingId: string | null;
+  autoScroll: boolean;
+}) {
+  const ref = useScrollToSelected<HTMLDivElement>(
+    selectedListingId,
+    autoScroll,
+  );
   return (
-    <div className="border border-border rounded overflow-x-auto">
+    <div
+      ref={ref}
+      className="border border-border rounded overflow-x-auto"
+    >
       <table className="w-full text-sm">
         <thead className="bg-muted/40 text-xs text-muted-foreground">
           <tr>
@@ -845,7 +963,11 @@ function TableView({ listings }: { listings: HomeListingItem[] }) {
         </thead>
         <tbody className="divide-y divide-border">
           {listings.map((l) => (
-            <TableRow key={l.id} listing={l} />
+            <TableRow
+              key={l.id}
+              listing={l}
+              selected={selectedListingId === l.id}
+            />
           ))}
         </tbody>
       </table>
@@ -853,12 +975,23 @@ function TableView({ listings }: { listings: HomeListingItem[] }) {
   );
 }
 
-function TableRow({ listing: l }: { listing: HomeListingItem }) {
+function TableRow({
+  listing: l,
+  selected,
+}: {
+  listing: HomeListingItem;
+  selected: boolean;
+}) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const beds = asNum(l.bedrooms);
   const baths = asNum(l.bathrooms);
   return (
-    <tr className="hover:bg-muted/40 transition-colors align-top">
+    <tr
+      data-listing-id={l.id}
+      className={`hover:bg-muted/40 transition-colors align-top ${
+        selected ? "bg-primary/10" : ""
+      }`}
+    >
       <td className="px-3 py-2 whitespace-nowrap">
         <PriorityEditor
           key={`pri-${l.id}-${l.priority ?? "null"}`}
