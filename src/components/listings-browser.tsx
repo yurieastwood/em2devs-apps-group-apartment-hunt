@@ -846,16 +846,22 @@ function TableRow({ listing: l }: { listing: HomeListingItem }) {
           <div className="w-16 h-12 rounded bg-muted" />
         )}
       </td>
-      <td className="px-3 py-2 min-w-[260px]">
+      <td className="px-3 py-2 min-w-[260px] max-w-[360px]">
         <Link
           href={`/listings/${l.id}`}
-          className="font-medium hover:underline whitespace-nowrap"
+          className="font-medium hover:underline block line-clamp-2"
+          title={l.address ?? l.title ?? "Unknown address"}
         >
           {l.address ?? l.title ?? "Unknown address"}
         </Link>
       </td>
-      <td className="px-3 py-2 text-muted-foreground text-xs max-w-[120px] break-words">
-        {l.neighborhood ?? "—"}
+      <td className="px-3 py-2 text-muted-foreground text-xs max-w-[120px]">
+        <span
+          className="line-clamp-2"
+          title={l.neighborhood ?? undefined}
+        >
+          {l.neighborhood ?? "—"}
+        </span>
       </td>
       <td className="px-3 py-2 text-right tabular-nums">
         {beds != null ? beds : "—"}
