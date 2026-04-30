@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import Lightbox from "yet-another-react-lightbox";
+import "yet-another-react-lightbox/styles.css";
 import { DeleteListingButton } from "@/components/delete-listing-button";
 import { HomeMap, type HomeMapProps } from "@/components/home-map";
 import { ListingListRow } from "@/components/listing-list-row";
@@ -173,7 +175,7 @@ export function ListingsBrowser({
   pois,
 }: {
   listings: HomeListingItem[];
-  viewMode: "cards" | "list";
+  viewMode: "cards" | "list" | "table";
   scopeLabels: HomeLabel[];
   home: HomeMapProps["home"];
   pois: HomeMapProps["pois"];
@@ -427,6 +429,8 @@ export function ListingsBrowser({
         <p className="text-muted-foreground">No listings match these filters.</p>
       ) : viewMode === "cards" ? (
         <CardsView listings={visible} />
+      ) : viewMode === "table" ? (
+        <TableView listings={visible} />
       ) : (
         <ListView listings={visible} />
       )}
@@ -775,6 +779,172 @@ function ListView({ listings }: { listings: HomeListingItem[] }) {
         />
       ))}
     </ul>
+  );
+}
+
+function TableView({ listings }: { listings: HomeListingItem[] }) {
+  return (
+    <div className="border border-border rounded overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/40 text-xs text-muted-foreground">
+          <tr>
+            <th className="px-3 py-2 text-left font-medium">P</th>
+            <th className="px-3 py-2 text-left font-medium">Photo</th>
+            <th className="px-3 py-2 text-left font-medium">Address</th>
+            <th className="px-3 py-2 text-left font-medium">Neighborhood</th>
+            <th className="px-3 py-2 text-right font-medium">BR</th>
+            <th className="px-3 py-2 text-right font-medium">BA</th>
+            <th className="px-3 py-2 text-right font-medium">Sqft</th>
+            <th className="px-3 py-2 text-right font-medium">Price</th>
+            <th className="px-3 py-2 text-right font-medium">PK</th>
+            <th className="px-3 py-2 text-left font-medium">Transit</th>
+            <th className="px-3 py-2 text-left font-medium">Labels</th>
+            <th className="px-3 py-2 text-left font-medium">Status</th>
+            <th className="px-3 py-2 text-right font-medium">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {listings.map((l) => (
+            <TableRow key={l.id} listing={l} />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TableRow({ listing: l }: { listing: HomeListingItem }) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const beds = asNum(l.bedrooms);
+  const baths = asNum(l.bathrooms);
+  return (
+    <tr className="hover:bg-muted/40 transition-colors align-top">
+      <td className="px-3 py-2 whitespace-nowrap">
+        <PriorityEditor
+          key={`pri-${l.id}-${l.priority ?? "null"}`}
+          listingId={l.id}
+          current={l.priority}
+        />
+      </td>
+      <td className="px-3 py-2">
+        {l.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={l.coverUrl}
+            alt=""
+            className="w-12 h-9 object-cover rounded"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-12 h-9 rounded bg-muted" />
+        )}
+      </td>
+      <td className="px-3 py-2 max-w-xs">
+        <Link
+          href={`/listings/${l.id}`}
+          className="font-medium hover:underline"
+        >
+          {l.address ?? l.title ?? "Unknown address"}
+        </Link>
+      </td>
+      <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
+        {l.neighborhood ?? "—"}
+      </td>
+      <td className="px-3 py-2 text-right tabular-nums">
+        {beds != null ? beds : "—"}
+      </td>
+      <td className="px-3 py-2 text-right tabular-nums">
+        {baths != null ? baths : "—"}
+      </td>
+      <td className="px-3 py-2 text-right tabular-nums">
+        {l.squareFeet != null ? l.squareFeet.toLocaleString("en-US") : "—"}
+      </td>
+      <td className="px-3 py-2 text-right tabular-nums font-medium">
+        {l.priceUsd != null ? `$${l.priceUsd.toLocaleString("en-US")}` : "—"}
+      </td>
+      <td className="px-3 py-2 text-right tabular-nums">
+        {l.nearestPkRating != null ? `${l.nearestPkRating}/10` : "—"}
+      </td>
+      <td className="px-3 py-2">
+        {l.poiDistances.length > 0 ? (
+          <div className="flex flex-col gap-0.5 text-xs">
+            {l.poiDistances.map((d) => {
+              const url = googleMapsTransitDirectionsUrl(
+                { lat: l.latitude, lng: l.longitude },
+                { lat: d.poiLat, lng: d.poiLng },
+              );
+              const text = `🚌 ${d.label}: ${
+                fmtTransitDuration(d.durationSeconds) ?? "—"
+              }`;
+              return url ? (
+                <a
+                  key={d.poiId}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline hover:text-foreground"
+                  title="Open transit directions in Google Maps"
+                >
+                  {text}
+                </a>
+              ) : (
+                <span key={d.poiId}>{text}</span>
+              );
+            })}
+          </div>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </td>
+      <td className="px-3 py-2">
+        {l.labels.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {l.labels.map((lbl) => (
+              <span
+                key={lbl.id}
+                className={`inline-flex items-center px-2 py-0.5 rounded-full border text-xs ${labelChipClasses(lbl.color)}`}
+              >
+                {lbl.name}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </td>
+      <td className="px-3 py-2 whitespace-nowrap">
+        <UnavailableBadge availability={l.availability} />
+      </td>
+      <td className="px-3 py-2 text-right whitespace-nowrap">
+        <div className="inline-flex items-center gap-3">
+          {l.coverUrl ? (
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(true)}
+              className="text-xs text-primary hover:underline"
+            >
+              Show photo
+            </button>
+          ) : null}
+          {l.canDelete ? (
+            <DeleteListingButton
+              listingId={l.id}
+              label="Delete"
+              className="text-xs text-muted-foreground hover:text-destructive disabled:opacity-60"
+            />
+          ) : null}
+        </div>
+      </td>
+      {l.coverUrl ? (
+        <Lightbox
+          open={lightboxOpen}
+          close={() => setLightboxOpen(false)}
+          slides={[{ src: l.coverUrl, alt: l.address ?? "Listing" }]}
+          carousel={{ finite: true }}
+          render={{ buttonPrev: () => null, buttonNext: () => null }}
+        />
+      ) : null}
+    </tr>
   );
 }
 

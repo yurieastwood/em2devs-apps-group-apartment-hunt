@@ -40,7 +40,10 @@ export const dynamic = "force-dynamic";
 
 async function getViewMode(): Promise<ViewMode> {
   const c = await cookies();
-  return c.get(VIEW_MODE_COOKIE)?.value === "list" ? "list" : "cards";
+  const v = c.get(VIEW_MODE_COOKIE)?.value;
+  if (v === "list") return "list";
+  if (v === "table") return "table";
+  return "cards";
 }
 
 function buildMapData(

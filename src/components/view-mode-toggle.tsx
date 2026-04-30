@@ -26,6 +26,12 @@ export function ViewModeToggle({ current }: { current: ViewMode }) {
         onClick={() => setMode("list")}
         label="List"
       />
+      <ToggleButton
+        active={current === "table"}
+        disabled={pending}
+        onClick={() => setMode("table")}
+        label="Table"
+      />
     </div>
   );
 }
