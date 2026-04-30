@@ -261,7 +261,7 @@ export default async function HomePage() {
   return (
     <main
       className={`flex-1 mx-auto p-8 w-full ${
-        viewMode === "table" ? "max-w-7xl" : "max-w-5xl"
+        viewMode === "table" ? "max-w-[1600px]" : "max-w-5xl"
       }`}
     >
       <section className="mb-8">

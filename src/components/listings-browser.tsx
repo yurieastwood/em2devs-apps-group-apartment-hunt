@@ -1083,15 +1083,11 @@ function TableRow({
           {l.address ?? l.title ?? "Unknown address"}
         </Link>
       </td>
-      <td className="px-3 py-2 text-muted-foreground text-xs max-w-[120px]">
-        <span className="line-clamp-2" title={l.neighborhood ?? undefined}>
-          {l.neighborhood ?? "—"}
-        </span>
+      <td className="px-3 py-2 text-muted-foreground text-xs whitespace-nowrap">
+        {l.neighborhood ?? "—"}
       </td>
-      <td className="px-3 py-2 text-muted-foreground text-xs max-w-[120px]">
-        <span className="line-clamp-2" title={l.district ?? undefined}>
-          {l.district ?? "—"}
-        </span>
+      <td className="px-3 py-2 text-muted-foreground text-xs whitespace-nowrap">
+        {l.district ?? "—"}
       </td>
       <td className="px-3 py-2 text-right tabular-nums">
         {beds != null ? beds : "—"}
