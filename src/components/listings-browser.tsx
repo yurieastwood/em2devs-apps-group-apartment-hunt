@@ -1002,6 +1002,7 @@ function TableView({
             <th className="px-3 py-2 text-left font-medium">Photo</th>
             <th className="px-3 py-2 text-left font-medium">Address</th>
             <th className="px-3 py-2 text-left font-medium">Neighborhood</th>
+            <th className="px-3 py-2 text-left font-medium">District</th>
             <th className="px-3 py-2 text-right font-medium">BR</th>
             <th className="px-3 py-2 text-right font-medium">BA</th>
             <th className="px-3 py-2 text-right font-medium">Sqft</th>
@@ -1082,12 +1083,14 @@ function TableRow({
           {l.address ?? l.title ?? "Unknown address"}
         </Link>
       </td>
-      <td className="px-3 py-2 text-muted-foreground text-xs max-w-[140px]">
-        <span
-          className="line-clamp-2"
-          title={fmtLocale(l.neighborhood, l.district) ?? undefined}
-        >
-          {fmtLocale(l.neighborhood, l.district) ?? "—"}
+      <td className="px-3 py-2 text-muted-foreground text-xs max-w-[120px]">
+        <span className="line-clamp-2" title={l.neighborhood ?? undefined}>
+          {l.neighborhood ?? "—"}
+        </span>
+      </td>
+      <td className="px-3 py-2 text-muted-foreground text-xs max-w-[120px]">
+        <span className="line-clamp-2" title={l.district ?? undefined}>
+          {l.district ?? "—"}
         </span>
       </td>
       <td className="px-3 py-2 text-right tabular-nums">
