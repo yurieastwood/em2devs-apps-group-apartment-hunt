@@ -224,6 +224,10 @@ export async function refreshListing(
       neighborhood,
       district,
       units: parsed.units,
+      // Refresh raw too — at import time it captures what the parser saw
+      // then; without re-saving it on refresh, raw drifts away from the
+      // current page and makes diagnosing parser issues impossible.
+      raw: parsed.raw,
       lastCheckedAt: now,
       lastCheckError: null,
     })
