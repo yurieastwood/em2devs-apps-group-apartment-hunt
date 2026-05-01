@@ -108,20 +108,37 @@ function extractDistrict(
   return parent;
 }
 
-// Zillow's homeStatus values: FOR_RENT / FOR_SALE → available; RECENTLY_RENTED
-// / RECENTLY_SOLD / OFF_MARKET → unavailable. Anything else stays unknown.
+// Zillow's homeStatus values, observed in real data:
+// - FOR_RENT / FOR_SALE / COMING_SOON / NEW_CONSTRUCTION → available
+// - OTHER is what Zillow actually uses for delisted apartment rentals
+//   (the page UI shows "Off market" for these). RECENTLY_RENTED /
+//   RECENTLY_SOLD / OFF_MARKET / PENDING / NOT_FOR_SALE /
+//   LOST_FORECLOSURE / AUCTION are documented enum values that also
+//   represent unavailable.
 function extractAvailability(property: Json): Availability {
   const status = asString(get(property, "homeStatus"));
   if (!status) return "unknown";
   const s = status.toUpperCase();
-  if (s === "FOR_RENT" || s === "FOR_SALE") return "available";
   if (
+    s === "FOR_RENT" ||
+    s === "FOR_SALE" ||
+    s === "COMING_SOON" ||
+    s === "NEW_CONSTRUCTION"
+  ) {
+    return "available";
+  }
+  if (
+    s === "OTHER" ||
     s === "RECENTLY_RENTED" ||
     s === "RECENTLY_SOLD" ||
     s === "OFF_MARKET" ||
-    s === "PENDING"
-  )
+    s === "PENDING" ||
+    s === "NOT_FOR_SALE" ||
+    s === "LOST_FORECLOSURE" ||
+    s === "AUCTION"
+  ) {
     return "unavailable";
+  }
   return "unknown";
 }
 
