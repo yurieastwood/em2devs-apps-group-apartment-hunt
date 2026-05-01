@@ -1,9 +1,31 @@
-// Nominatim (OpenStreetMap) geocoder. Free with a 1 req/sec rate limit and
-// a ToS that asks for an identifying User-Agent. Plenty for this app — the
-// only call is when the user sets or edits their home address.
+// Nominatim (OpenStreetMap) geocoder. Free with a strict 1 req/sec policy
+// and a ToS that asks for an identifying User-Agent. Both forward (address
+// → coords) and reverse (coords → address components) calls go through a
+// module-level throttle so we don't burst above 1 req/sec when refresh-all
+// fires reverse-geocodes for many listings concurrently.
 
 const NOMINATIM_USER_AGENT =
   "ApartmentHuntFamilyApp/1.0 (https://www.group-apartment-hunt.xyz)";
+
+const NOMINATIM_MIN_INTERVAL_MS = 1100;
+let nominatimQueue: Promise<unknown> = Promise.resolve();
+
+function throttledNominatim<T>(fn: () => Promise<T>): Promise<T> {
+  const next = nominatimQueue.then(async () => {
+    try {
+      return await fn();
+    } finally {
+      await new Promise((r) => setTimeout(r, NOMINATIM_MIN_INTERVAL_MS));
+    }
+  });
+  // Keep the chain alive even if a call rejects so subsequent calls still
+  // get serialized (the rejection still propagates to the original caller).
+  nominatimQueue = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
 
 export type GeocodeResult = {
   lat: number;
@@ -17,9 +39,9 @@ export async function geocodeAddress(
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
     query,
   )}&format=json&limit=1&addressdetails=0`;
-  const res = await fetch(url, {
-    headers: { "User-Agent": NOMINATIM_USER_AGENT },
-  });
+  const res = await throttledNominatim(() =>
+    fetch(url, { headers: { "User-Agent": NOMINATIM_USER_AGENT } }),
+  );
   if (!res.ok) return null;
   const data = (await res.json()) as Array<{
     lat: string;
@@ -61,9 +83,9 @@ export async function reverseGeocodeAddress(
   url.searchParams.set("lon", lng.toString());
   url.searchParams.set("zoom", "17");
   try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": NOMINATIM_USER_AGENT },
-    });
+    const res = await throttledNominatim(() =>
+      fetch(url, { headers: { "User-Agent": NOMINATIM_USER_AGENT } }),
+    );
     if (!res.ok) return null;
     const data = (await res.json()) as { address?: Record<string, unknown> };
     const addr = data.address ?? {};

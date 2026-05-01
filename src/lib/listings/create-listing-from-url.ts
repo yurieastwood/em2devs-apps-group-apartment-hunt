@@ -9,10 +9,7 @@ import { parseZillow } from "../extract/parsers/zillow";
 import type { ParsedListing } from "../extract/types";
 import { normalizeListingUrl } from "../url-normalize";
 import { rehostListingPhotos } from "./rehost-photos";
-import {
-  resolveDistrict,
-  resolveNeighborhood,
-} from "./resolve-neighborhood";
+import { resolveLocale } from "./resolve-locale";
 
 type Parser = (url: string, html: string) => ParsedListing;
 
@@ -82,24 +79,12 @@ export async function createListingFromUrl(
 
   const parsed = parser(sourceUrl, fetched.html);
 
-  const neighborhood = await resolveNeighborhood({
-    parsed: parsed.neighborhood,
+  const { neighborhood, district } = await resolveLocale({
+    parsedNeighborhood: parsed.neighborhood,
+    parsedDistrict: parsed.district,
     latitude: parsed.latitude,
     longitude: parsed.longitude,
   });
-  let district = await resolveDistrict({
-    parsed: parsed.district,
-    latitude: parsed.latitude,
-    longitude: parsed.longitude,
-  });
-  // De-dupe — same as refresh.ts.
-  if (
-    district &&
-    neighborhood &&
-    district.toLowerCase() === neighborhood.toLowerCase()
-  ) {
-    district = null;
-  }
 
   const [inserted] = await db
     .insert(listings)

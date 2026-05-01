@@ -21,10 +21,7 @@ import {
   recomputeDistancesForListing,
 } from "../places/poi-distances";
 import { rehostListingPhotos } from "./rehost-photos";
-import {
-  resolveDistrict,
-  resolveNeighborhood,
-} from "./resolve-neighborhood";
+import { resolveLocale } from "./resolve-locale";
 
 type Headline = {
   beds: number | null;
@@ -186,28 +183,14 @@ export async function refreshListing(
   const headline = computeHeadline(current, parsed);
   const changes = diffListing(current, headline.price, parsed.availability);
 
-  const neighborhood = await resolveNeighborhood({
-    parsed: parsed.neighborhood,
-    current: current.neighborhood,
+  const { neighborhood, district } = await resolveLocale({
+    parsedNeighborhood: parsed.neighborhood,
+    parsedDistrict: parsed.district,
+    currentNeighborhood: current.neighborhood,
+    currentDistrict: current.district,
     latitude: parsed.latitude,
     longitude: parsed.longitude,
   });
-  let district = await resolveDistrict({
-    parsed: parsed.district,
-    current: current.district,
-    latitude: parsed.latitude,
-    longitude: parsed.longitude,
-  });
-  // De-dupe: if parser-derived neighborhood and Nominatim-derived district
-  // happen to be the same name, drop the district so we don't show the same
-  // value in both columns.
-  if (
-    district &&
-    neighborhood &&
-    district.toLowerCase() === neighborhood.toLowerCase()
-  ) {
-    district = null;
-  }
 
   if (changes.length > 0) {
     await db.insert(listingChanges).values(
