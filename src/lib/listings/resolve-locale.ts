@@ -42,22 +42,14 @@ export async function resolveLocale(
     trimToNull(input.currentNeighborhood) ??
     null;
 
-  let district =
+  const district =
     trimToNull(geo?.district) ??
     trimToNull(input.parsedDistrict) ??
     trimToNull(input.currentDistrict) ??
     null;
 
-  // De-dupe — when neighborhood and district end up the same name (e.g. a
-  // Logan Square listing where both layers in OSM resolve to "Logan
-  // Square"), drop the district so the columns stay distinct.
-  if (
-    district &&
-    neighborhood &&
-    district.toLowerCase() === neighborhood.toLowerCase()
-  ) {
-    district = null;
-  }
-
+  // No de-dupe — the user prefers both columns populated even when they
+  // resolve to the same name (e.g. "West Town"), so neighborhood- and
+  // district-level filter chip groups stay independent.
   return { neighborhood, district };
 }
