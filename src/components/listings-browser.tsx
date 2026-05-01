@@ -849,9 +849,16 @@ function CardsView({
             </div>
             <div className="p-4">
               <div className="flex items-start justify-between gap-2">
-                <p className="font-medium line-clamp-1">
-                  {l.address ?? "Unknown address"}
-                </p>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium line-clamp-1">
+                    {l.title ?? l.address ?? "Unknown address"}
+                  </p>
+                  {l.title && l.address && l.title !== l.address ? (
+                    <p className="text-sm text-muted-foreground line-clamp-1">
+                      {l.address}
+                    </p>
+                  ) : null}
+                </div>
                 <UnavailableBadge availability={l.availability} />
               </div>
               {fmtLocale(l.neighborhood, l.district) ? (
@@ -954,7 +961,8 @@ function ListView({
         <ListingListRow
           key={l.id}
           listingId={l.id}
-          address={l.address ?? l.title ?? "Unknown address"}
+          title={l.title}
+          address={l.address}
           bedrooms={l.bedrooms}
           bathrooms={l.bathrooms}
           squareFeet={l.squareFeet}
@@ -1077,10 +1085,17 @@ function TableRow({
       <td className="px-3 py-2 min-w-[260px] max-w-[360px]">
         <Link
           href={`/listings/${l.id}`}
-          className="font-medium hover:underline block line-clamp-2"
-          title={l.address ?? l.title ?? "Unknown address"}
+          className="block hover:underline"
+          title={l.title ?? l.address ?? "Unknown address"}
         >
-          {l.address ?? l.title ?? "Unknown address"}
+          <span className="font-medium line-clamp-1 block">
+            {l.title ?? l.address ?? "Unknown address"}
+          </span>
+          {l.title && l.address && l.title !== l.address ? (
+            <span className="text-sm text-muted-foreground line-clamp-1 block">
+              {l.address}
+            </span>
+          ) : null}
         </Link>
       </td>
       <td className="px-3 py-2 text-muted-foreground text-xs whitespace-nowrap">

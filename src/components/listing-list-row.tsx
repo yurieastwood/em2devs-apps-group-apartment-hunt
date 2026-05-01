@@ -29,7 +29,8 @@ export type ListingListRowLabel = {
 
 export type ListingListRowProps = {
   listingId: string;
-  address: string;
+  title: string | null;
+  address: string | null;
   bedrooms: string | null;
   bathrooms: string | null;
   squareFeet?: number | null;
@@ -50,6 +51,7 @@ export type ListingListRowProps = {
 
 export function ListingListRow({
   listingId,
+  title,
   address,
   bedrooms,
   bathrooms,
@@ -81,12 +83,19 @@ export function ListingListRow({
     >
       <div className="flex items-center gap-4 px-3 py-2 hover:bg-muted/40 transition-colors">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-start gap-2">
             <Link
               href={`/listings/${listingId}`}
-              className="font-medium hover:underline block truncate"
+              className="block hover:underline min-w-0 flex-1"
             >
-              {address}
+              <span className="font-medium block truncate">
+                {title ?? address ?? "Unknown address"}
+              </span>
+              {title && address && title !== address ? (
+                <span className="text-sm text-muted-foreground block truncate">
+                  {address}
+                </span>
+              ) : null}
             </Link>
             {availability === "unavailable" ? (
               <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/30 text-[10px] font-medium uppercase tracking-wide shrink-0">
@@ -183,7 +192,7 @@ export function ListingListRow({
         <Lightbox
           open={open}
           close={() => setOpen(false)}
-          slides={[{ src: coverUrl, alt: address }]}
+          slides={[{ src: coverUrl, alt: title ?? address ?? "" }]}
           carousel={{ finite: true }}
           render={{ buttonPrev: () => null, buttonNext: () => null }}
         />
