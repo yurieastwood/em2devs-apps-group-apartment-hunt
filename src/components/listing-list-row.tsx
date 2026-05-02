@@ -127,7 +127,9 @@ export function ListingListRow({
               </span>
             ) : null}
             {safetyScore != null ? (
-              <span title={`Safety score (0–100, higher is safer): ${safetyScore}`}>
+              <span
+                title={`Safety: ${safetyScore}/100. Percentile rank within your library — 100 = safest, 0 = least safe.`}
+              >
                 🛡 {safetyScore}
               </span>
             ) : null}

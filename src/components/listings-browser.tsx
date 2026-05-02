@@ -782,7 +782,7 @@ function SafetyBadge({ score }: { score: number | null }) {
   return (
     <span
       className={`tabular-nums ${safetyClass(score)}`}
-      title={`Safety score (0–100, higher is safer): ${score}`}
+      title={`Safety: ${score}/100. Percentile rank within your library — 100 = safest, 0 = least safe. See the listing's detail page for the absolute breakdown.`}
     >
       🛡 {score}
     </span>
@@ -1168,7 +1168,7 @@ function TableRow({
         }`}
         title={
           l.safetyScore != null
-            ? `Safety score (0–100, higher is safer): ${l.safetyScore}`
+            ? `Safety: ${l.safetyScore}/100. Percentile rank within your library — 100 = safest, 0 = least safe.`
             : undefined
         }
       >

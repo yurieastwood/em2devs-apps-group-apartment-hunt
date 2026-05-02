@@ -224,31 +224,30 @@ export default async function HomePage() {
     distMap.set(r.listingId, arr);
   }
 
-  // Library-relative safety score: min-max scale across the user's
-  // currently-visible listings. Best raw → 100, worst raw → 0, others
-  // linear in between. No magic benchmark constant — the formula
-  // self-calibrates to whatever's in the library. See
-  // src/lib/safety/chicago.ts for the alternative scoring options
-  // (percentile, Chicago-wide percentile) we documented for later.
+  // Library-relative safety score: percentile rank across the user's
+  // currently-visible listings. Lowest raw (safest) → 100, highest raw
+  // (least safe) → 0, every other listing positioned linearly in between
+  // by rank. Spread is always 0–100 by construction; outliers don't
+  // compress the rest. The detail page also surfaces a secondary min-max
+  // score for absolute context. See src/lib/safety/chicago.ts for the
+  // documented alternatives (min-max stays the secondary; Chicago-wide
+  // percentile is the future option).
   const rawSafetyValues: number[] = [];
   for (const l of allListings) {
     const raw = readSafetyRaw(l.safetyBreakdown);
     if (raw != null) rawSafetyValues.push(raw);
   }
-  const safetyMin =
-    rawSafetyValues.length > 0 ? Math.min(...rawSafetyValues) : null;
-  const safetyMax =
-    rawSafetyValues.length > 0 ? Math.max(...rawSafetyValues) : null;
-  const relativeSafetyScore = (raw: number | null): number | null => {
+  const sortedRawAsc = [...rawSafetyValues].sort((a, b) => a - b);
+  const percentileSafetyScore = (raw: number | null): number | null => {
     if (raw == null) return null;
-    if (
-      safetyMin == null ||
-      safetyMax == null ||
-      safetyMax === safetyMin
-    ) {
-      return 50;
-    }
-    const score = (100 * (safetyMax - raw)) / (safetyMax - safetyMin);
+    const n = sortedRawAsc.length;
+    if (n <= 1) return 50;
+    // Find the listing's rank (0-indexed) — first index in the sorted
+    // array whose value is >= this raw. Ties resolve to the lowest rank
+    // so identical raws produce the same score.
+    let rank = 0;
+    while (rank < n && sortedRawAsc[rank] < raw) rank += 1;
+    const score = (100 * (n - 1 - rank)) / (n - 1);
     return Math.round(Math.max(0, Math.min(100, score)));
   };
 
@@ -265,7 +264,7 @@ export default async function HomePage() {
       priceUsd: l.priceUsd,
       priority: l.priority,
       availability: l.availability,
-      safetyScore: relativeSafetyScore(readSafetyRaw(l.safetyBreakdown)),
+      safetyScore: percentileSafetyScore(readSafetyRaw(l.safetyBreakdown)),
       latitude: l.latitude ? parseFloat(l.latitude) : null,
       longitude: l.longitude ? parseFloat(l.longitude) : null,
       nearestPkRating: nearestPkRatingMap.get(l.id) ?? null,

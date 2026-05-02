@@ -31,11 +31,23 @@ function fmtWhen(iso: string): string {
   });
 }
 
+const PERCENTILE_TOOLTIP =
+  "Percentile rank within your library — 100 means safest in the library, 0 means least safe. The same score the home page shows.";
+
+const MIN_MAX_TOOLTIP =
+  "Min-max scaled — proportional to the gap between your safest and least-safe listings' raw incident scores. Preserves absolute differences but compresses the middle of the library when there are outliers.";
+
 export function ListingSafetySection({
   score,
+  minMaxScore,
+  rank,
+  total,
   breakdown,
 }: {
   score: number | null;
+  minMaxScore: number | null;
+  rank: number | null;
+  total: number | null;
   breakdown: unknown;
 }) {
   if (score == null) return null;
@@ -56,21 +68,52 @@ export function ListingSafetySection({
       <div className="flex items-baseline justify-between gap-3 mb-3 flex-wrap">
         <h2 className="text-lg font-semibold">Safety</h2>
         <span className="text-xs text-muted-foreground">
-          0–100, higher is safer
+          0–100, higher is safer (relative to your library)
         </span>
       </div>
-      <div className="flex items-baseline gap-3 mb-4">
+
+      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 mb-2">
         <span
           className={`text-3xl font-semibold tabular-nums ${safetyClass(score)}`}
+          title={PERCENTILE_TOOLTIP}
         >
           🛡 {score}
         </span>
-        {totals ? (
-          <span className="text-sm text-muted-foreground">
-            within {fmtMiles(totals.radiusMeters)} • raw {totals.raw}
-          </span>
+        <span
+          className="text-xs text-muted-foreground cursor-help"
+          title={PERCENTILE_TOOLTIP}
+        >
+          Percentile rank
+        </span>
+        {minMaxScore != null ? (
+          <>
+            <span
+              className={`text-xl tabular-nums ${safetyClass(minMaxScore)}`}
+              title={MIN_MAX_TOOLTIP}
+            >
+              {minMaxScore}
+            </span>
+            <span
+              className="text-xs text-muted-foreground cursor-help"
+              title={MIN_MAX_TOOLTIP}
+            >
+              Min-max scaled
+            </span>
+          </>
         ) : null}
       </div>
+
+      {rank != null && total != null && total > 1 ? (
+        <p className="text-sm text-muted-foreground mb-4">
+          {rank === 1
+            ? "Safest in your library"
+            : rank === total
+              ? "Least safe in your library"
+              : `Rank ${rank} of ${total} (${rank - 1} listing${
+                  rank - 1 === 1 ? "" : "s"
+                } safer, ${total - rank} less safe)`}
+        </p>
+      ) : null}
 
       {totals ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
@@ -108,6 +151,8 @@ export function ListingSafetySection({
       {totals ? (
         <p className="text-xs text-muted-foreground mt-3">
           Source: {totals.source}. Computed {fmtWhen(totals.computedAt)}.
+          Raw weighted incidents within {fmtMiles(totals.radiusMeters)}:{" "}
+          <span className="tabular-nums">{totals.raw}</span>.
         </p>
       ) : null}
     </section>

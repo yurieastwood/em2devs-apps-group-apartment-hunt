@@ -34,16 +34,34 @@ function readSafetyRaw(breakdown: unknown): number | null {
   return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
 }
 
-// Min-max library-relative score for a single listing. Mirrors the home
-// page logic but queries the scope's min/max raw on its own. Returns null
-// when the listing has no safety data; 50 when the listing is alone.
-async function computeRelativeSafetyScore(
+type RelativeSafety = {
+  // Percentile rank within the user's library — 0..100, where 100 means
+  // this listing is the safest in the library. Primary score (matches
+  // what the home page shows).
+  percentile: number | null;
+  // Min-max relative — preserves absolute gaps, secondary on detail page.
+  minMax: number | null;
+  // Position info for the explanatory text ("Xth of N safer in library").
+  rank: number | null;
+  total: number | null;
+};
+
+// Compute both library-relative scores for a single listing. Pulls every
+// raw value from the user's scope in one query, then derives both the
+// percentile rank (matches home page) and the min-max relative score.
+async function computeRelativeSafety(
   breakdown: unknown,
   ctx: { userId: string | null; orgId: string | null | undefined },
-): Promise<number | null> {
+): Promise<RelativeSafety> {
+  const empty: RelativeSafety = {
+    percentile: null,
+    minMax: null,
+    rank: null,
+    total: null,
+  };
   const raw = readSafetyRaw(breakdown);
-  if (raw == null) return null;
-  if (!ctx.userId) return null;
+  if (raw == null) return empty;
+  if (!ctx.userId) return empty;
 
   const scope = ctx.orgId
     ? eq(listings.orgId, ctx.orgId)
@@ -52,21 +70,44 @@ async function computeRelativeSafetyScore(
         isNull(listings.orgId),
       );
 
-  const [stats] = await db
+  const rows = await db
     .select({
-      minRaw: sql<number | null>`min((safety_breakdown->>'raw')::numeric)`,
-      maxRaw: sql<number | null>`max((safety_breakdown->>'raw')::numeric)`,
+      raw: sql<string>`(safety_breakdown->>'raw')::numeric`,
     })
     .from(listings)
     .where(
       and(scope!, isNull(listings.deletedAt), sql`safety_breakdown IS NOT NULL`),
     );
 
-  const min = stats?.minRaw != null ? Number(stats.minRaw) : null;
-  const max = stats?.maxRaw != null ? Number(stats.maxRaw) : null;
-  if (min == null || max == null || max === min) return 50;
-  const score = (100 * (max - raw)) / (max - min);
-  return Math.round(Math.max(0, Math.min(100, score)));
+  const values = rows
+    .map((r) => Number(r.raw))
+    .filter((n): n is number => Number.isFinite(n));
+  const n = values.length;
+  if (n === 0) return empty;
+  if (n === 1) return { percentile: 50, minMax: 50, rank: 1, total: 1 };
+
+  values.sort((a, b) => a - b);
+  let rank = 0;
+  while (rank < n && values[rank] < raw) rank += 1;
+  const percentile = Math.round(
+    Math.max(0, Math.min(100, (100 * (n - 1 - rank)) / (n - 1))),
+  );
+
+  const min = values[0];
+  const max = values[n - 1];
+  const minMax =
+    max === min
+      ? 50
+      : Math.round(
+          Math.max(0, Math.min(100, (100 * (max - raw)) / (max - min))),
+        );
+
+  return {
+    percentile,
+    minMax,
+    rank: rank + 1, // 1-indexed for display
+    total: n,
+  };
 }
 type SearchParams = Promise<{ duplicate?: string }>;
 
@@ -168,11 +209,9 @@ export default async function ListingDetailPage({
 
   const photoUrls = await Promise.all(photos.map((p) => urlFor(p.r2Key)));
 
-  // Library-relative safety score — same min-max approach as the home page.
-  // We need this listing's raw value plus the min/max raw across the user's
-  // scope (org or personal). The result spans 0–100 across the library;
-  // standalone (only one listing in scope) returns 50.
-  const relativeSafetyScore = await computeRelativeSafetyScore(
+  // Library-relative safety: percentile rank is the primary score (matches
+  // the home page), min-max is shown alongside as absolute context.
+  const relativeSafety = await computeRelativeSafety(
     listing.safetyBreakdown,
     { userId, orgId },
   );
@@ -343,7 +382,10 @@ export default async function ListingDetailPage({
       <NearbySchools listingId={listing.id} />
 
       <ListingSafetySection
-        score={relativeSafetyScore}
+        score={relativeSafety.percentile}
+        minMaxScore={relativeSafety.minMax}
+        rank={relativeSafety.rank}
+        total={relativeSafety.total}
         breakdown={listing.safetyBreakdown}
       />
 
