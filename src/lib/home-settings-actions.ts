@@ -3,6 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { isOrgAdmin } from "@/lib/auth/roles";
+import { computeSafetyScore } from "./safety";
 import { geocodeAddress } from "./geocode";
 import { setHome } from "./home-settings";
 
@@ -35,11 +36,20 @@ export async function setHomeAction(
     };
   }
 
+  // Compute the home's raw safety so listings can be scored relative to it.
+  // Outside-Chicago homes return null and we degrade to library-percentile
+  // on the home page.
+  const safety = await computeSafetyScore(result.lat, result.lng);
+  const homeSafety = safety
+    ? { raw: safety.breakdown.raw, breakdown: safety.breakdown }
+    : null;
+
   await setHome(
     { userId, orgId },
     result.displayName,
     result.lat,
     result.lng,
+    homeSafety,
   );
   revalidatePath("/");
   return { kind: "saved" };

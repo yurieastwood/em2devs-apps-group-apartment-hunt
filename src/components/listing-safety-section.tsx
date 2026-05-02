@@ -31,26 +31,34 @@ function fmtWhen(iso: string): string {
   });
 }
 
+const HOME_RELATIVE_TOOLTIP =
+  "Compared to your current home address. 50 = exactly as safe as home; above 50 = safer than home; below 50 = less safe than home. Computed as 100 × home_raw / (home_raw + listing_raw).";
+
 const PERCENTILE_TOOLTIP =
-  "Percentile rank within your library — 100 means safest in the library, 0 means least safe. The same score the home page shows.";
+  "Percentile rank within your library — 100 means safest in the library, 0 means least safe. Spread is always 0–100 by construction.";
 
 const MIN_MAX_TOOLTIP =
-  "Min-max scaled — proportional to the gap between your safest and least-safe listings' raw incident scores. Preserves absolute differences but compresses the middle of the library when there are outliers.";
+  "Min-max scaled — proportional to the gap between your safest and least-safe listings' raw incident scores. Preserves absolute differences but compresses the middle when there are outliers.";
 
 export function ListingSafetySection({
-  score,
-  minMaxScore,
+  homeRelative,
+  percentile,
+  minMax,
   rank,
   total,
   breakdown,
 }: {
-  score: number | null;
-  minMaxScore: number | null;
+  homeRelative: number | null;
+  percentile: number | null;
+  minMax: number | null;
   rank: number | null;
   total: number | null;
   breakdown: unknown;
 }) {
-  if (score == null) return null;
+  // Show the section if at least one score is available.
+  if (homeRelative == null && percentile == null && minMax == null) {
+    return null;
+  }
 
   const totals = isBreakdown(breakdown)
     ? {
@@ -63,44 +71,89 @@ export function ListingSafetySection({
       }
     : null;
 
+  // Pick the primary (big) score. Prefer home-relative; fall back to
+  // percentile, then min-max.
+  const primary =
+    homeRelative != null
+      ? {
+          value: homeRelative,
+          label: "vs home",
+          tooltip: HOME_RELATIVE_TOOLTIP,
+        }
+      : percentile != null
+        ? {
+            value: percentile,
+            label: "Percentile rank",
+            tooltip: PERCENTILE_TOOLTIP,
+          }
+        : {
+            value: minMax!,
+            label: "Min-max scaled",
+            tooltip: MIN_MAX_TOOLTIP,
+          };
+
+  // Secondary scores: skip whichever is the primary.
+  const secondaries: Array<{
+    value: number;
+    label: string;
+    tooltip: string;
+  }> = [];
+  if (primary.label !== "Percentile rank" && percentile != null) {
+    secondaries.push({
+      value: percentile,
+      label: "Percentile rank",
+      tooltip: PERCENTILE_TOOLTIP,
+    });
+  }
+  if (primary.label !== "Min-max scaled" && minMax != null) {
+    secondaries.push({
+      value: minMax,
+      label: "Min-max scaled",
+      tooltip: MIN_MAX_TOOLTIP,
+    });
+  }
+
   return (
     <section className="mt-8 border-t border-border pt-6">
       <div className="flex items-baseline justify-between gap-3 mb-3 flex-wrap">
         <h2 className="text-lg font-semibold">Safety</h2>
         <span className="text-xs text-muted-foreground">
-          0–100, higher is safer (relative to your library)
+          0–100, higher is safer
         </span>
       </div>
 
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 mb-2">
         <span
-          className={`text-3xl font-semibold tabular-nums ${safetyClass(score)}`}
-          title={PERCENTILE_TOOLTIP}
+          className={`text-3xl font-semibold tabular-nums ${safetyClass(primary.value)}`}
+          title={primary.tooltip}
         >
-          🛡 {score}
+          🛡 {primary.value}
         </span>
         <span
           className="text-xs text-muted-foreground cursor-help"
-          title={PERCENTILE_TOOLTIP}
+          title={primary.tooltip}
         >
-          Percentile rank
+          {primary.label}
         </span>
-        {minMaxScore != null ? (
-          <>
+        {secondaries.map((s) => (
+          <span
+            key={s.label}
+            className="inline-flex items-baseline gap-1.5"
+          >
             <span
-              className={`text-xl tabular-nums ${safetyClass(minMaxScore)}`}
-              title={MIN_MAX_TOOLTIP}
+              className={`text-xl tabular-nums ${safetyClass(s.value)}`}
+              title={s.tooltip}
             >
-              {minMaxScore}
+              {s.value}
             </span>
             <span
               className="text-xs text-muted-foreground cursor-help"
-              title={MIN_MAX_TOOLTIP}
+              title={s.tooltip}
             >
-              Min-max scaled
+              {s.label}
             </span>
-          </>
-        ) : null}
+          </span>
+        ))}
       </div>
 
       {rank != null && total != null && total > 1 ? (

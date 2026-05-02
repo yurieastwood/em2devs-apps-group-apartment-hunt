@@ -224,14 +224,16 @@ export default async function HomePage() {
     distMap.set(r.listingId, arr);
   }
 
-  // Library-relative safety score: percentile rank across the user's
-  // currently-visible listings. Lowest raw (safest) → 100, highest raw
-  // (least safe) → 0, every other listing positioned linearly in between
-  // by rank. Spread is always 0–100 by construction; outliers don't
-  // compress the rest. The detail page also surfaces a secondary min-max
-  // score for absolute context. See src/lib/safety/chicago.ts for the
-  // documented alternatives (min-max stays the secondary; Chicago-wide
-  // percentile is the future option).
+  // Primary safety score: relative to the user's home. 50 = same as home,
+  // >50 = safer, <50 = less safe. Symmetric formula:
+  //   score = 100 × home_raw / (home_raw + listing_raw)
+  // When the home isn't set or sits outside Chicago (no raw available),
+  // gracefully fall back to library-percentile rank.
+  const homeRaw =
+    userHome?.safetyRaw != null && userHome.safetyRaw.length > 0
+      ? Number(userHome.safetyRaw)
+      : null;
+
   const rawSafetyValues: number[] = [];
   for (const l of allListings) {
     const raw = readSafetyRaw(l.safetyBreakdown);
@@ -242,13 +244,21 @@ export default async function HomePage() {
     if (raw == null) return null;
     const n = sortedRawAsc.length;
     if (n <= 1) return 50;
-    // Find the listing's rank (0-indexed) — first index in the sorted
-    // array whose value is >= this raw. Ties resolve to the lowest rank
-    // so identical raws produce the same score.
     let rank = 0;
     while (rank < n && sortedRawAsc[rank] < raw) rank += 1;
     const score = (100 * (n - 1 - rank)) / (n - 1);
     return Math.round(Math.max(0, Math.min(100, score)));
+  };
+
+  const primarySafetyScore = (raw: number | null): number | null => {
+    if (raw == null) return null;
+    if (homeRaw != null && Number.isFinite(homeRaw)) {
+      const denom = homeRaw + raw;
+      if (denom <= 0) return 50;
+      const score = (100 * homeRaw) / denom;
+      return Math.round(Math.max(0, Math.min(100, score)));
+    }
+    return percentileSafetyScore(raw);
   };
 
   const items: HomeListingItem[] = await Promise.all(
@@ -264,7 +274,7 @@ export default async function HomePage() {
       priceUsd: l.priceUsd,
       priority: l.priority,
       availability: l.availability,
-      safetyScore: percentileSafetyScore(readSafetyRaw(l.safetyBreakdown)),
+      safetyScore: primarySafetyScore(readSafetyRaw(l.safetyBreakdown)),
       latitude: l.latitude ? parseFloat(l.latitude) : null,
       longitude: l.longitude ? parseFloat(l.longitude) : null,
       nearestPkRating: nearestPkRatingMap.get(l.id) ?? null,

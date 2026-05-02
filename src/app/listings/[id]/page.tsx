@@ -17,6 +17,7 @@ import { RefreshListingButton } from "@/components/refresh-listing-button";
 import { ListingChangesLog } from "@/components/listing-changes-log";
 import { ListingSafetySection } from "@/components/listing-safety-section";
 import { ListingUnitsSection } from "@/components/listing-units-section";
+import { getHome } from "@/lib/home-settings";
 import { getPois } from "@/lib/points-of-interest";
 
 import { ListingLabelsSection } from "@/components/listing-labels";
@@ -35,25 +36,29 @@ function readSafetyRaw(breakdown: unknown): number | null {
 }
 
 type RelativeSafety = {
-  // Percentile rank within the user's library — 0..100, where 100 means
-  // this listing is the safest in the library. Primary score (matches
-  // what the home page shows).
+  // Home-relative score: 50 = same as home, >50 = safer, <50 = less safe.
+  // Primary metric on home + detail. Null when home isn't set or has no
+  // safety raw (e.g. home outside Chicago).
+  homeRelative: number | null;
+  // Percentile rank within the user's library — secondary, always shown.
   percentile: number | null;
-  // Min-max relative — preserves absolute gaps, secondary on detail page.
+  // Min-max scaled — tertiary, preserves absolute gaps.
   minMax: number | null;
-  // Position info for the explanatory text ("Xth of N safer in library").
+  // Position info for "Rank X of N" line.
   rank: number | null;
   total: number | null;
 };
 
-// Compute both library-relative scores for a single listing. Pulls every
-// raw value from the user's scope in one query, then derives both the
-// percentile rank (matches home page) and the min-max relative score.
+// Compute all three relative safety metrics for a single listing. Pulls
+// every raw value from the user's scope in one query, plus the home's raw
+// for the symmetric home-relative score.
 async function computeRelativeSafety(
   breakdown: unknown,
+  homeRaw: number | null,
   ctx: { userId: string | null; orgId: string | null | undefined },
 ): Promise<RelativeSafety> {
   const empty: RelativeSafety = {
+    homeRelative: null,
     percentile: null,
     minMax: null,
     rank: null,
@@ -83,8 +88,23 @@ async function computeRelativeSafety(
     .map((r) => Number(r.raw))
     .filter((n): n is number => Number.isFinite(n));
   const n = values.length;
-  if (n === 0) return empty;
-  if (n === 1) return { percentile: 50, minMax: 50, rank: 1, total: 1 };
+
+  // Home-relative: symmetric score = 100 × home / (home + listing).
+  const homeRelative =
+    homeRaw != null && Number.isFinite(homeRaw)
+      ? homeRaw + raw <= 0
+        ? 50
+        : Math.round(
+            Math.max(0, Math.min(100, (100 * homeRaw) / (homeRaw + raw))),
+          )
+      : null;
+
+  if (n === 0) {
+    return { homeRelative, percentile: null, minMax: null, rank: null, total: null };
+  }
+  if (n === 1) {
+    return { homeRelative, percentile: 50, minMax: 50, rank: 1, total: 1 };
+  }
 
   values.sort((a, b) => a - b);
   let rank = 0;
@@ -103,9 +123,10 @@ async function computeRelativeSafety(
         );
 
   return {
+    homeRelative,
     percentile,
     minMax,
-    rank: rank + 1, // 1-indexed for display
+    rank: rank + 1,
     total: n,
   };
 }
@@ -209,10 +230,18 @@ export default async function ListingDetailPage({
 
   const photoUrls = await Promise.all(photos.map((p) => urlFor(p.r2Key)));
 
-  // Library-relative safety: percentile rank is the primary score (matches
-  // the home page), min-max is shown alongside as absolute context.
+  // Three safety lenses: home-relative (50 = same as home), library
+  // percentile rank, and min-max scaled. All three are shown on the
+  // detail page; the home page uses home-relative as the primary with
+  // percentile as the graceful fallback when home isn't set.
+  const userHome = userId ? await getHome({ userId, orgId }) : null;
+  const homeRaw =
+    userHome?.safetyRaw != null && userHome.safetyRaw.length > 0
+      ? Number(userHome.safetyRaw)
+      : null;
   const relativeSafety = await computeRelativeSafety(
     listing.safetyBreakdown,
+    homeRaw,
     { userId, orgId },
   );
 
@@ -382,8 +411,9 @@ export default async function ListingDetailPage({
       <NearbySchools listingId={listing.id} />
 
       <ListingSafetySection
-        score={relativeSafety.percentile}
-        minMaxScore={relativeSafety.minMax}
+        homeRelative={relativeSafety.homeRelative}
+        percentile={relativeSafety.percentile}
+        minMax={relativeSafety.minMax}
         rank={relativeSafety.rank}
         total={relativeSafety.total}
         breakdown={listing.safetyBreakdown}

@@ -782,7 +782,7 @@ function SafetyBadge({ score }: { score: number | null }) {
   return (
     <span
       className={`tabular-nums ${safetyClass(score)}`}
-      title={`Safety: ${score}/100. Percentile rank within your library — 100 = safest, 0 = least safe. See the listing's detail page for the absolute breakdown.`}
+      title={`Safety: ${score}/100. Compared to your home address — 50 = same as home, >50 = safer, <50 = less safe. Falls back to library percentile rank when home isn't set. See the detail page for all three lenses.`}
     >
       🛡 {score}
     </span>
@@ -1168,7 +1168,7 @@ function TableRow({
         }`}
         title={
           l.safetyScore != null
-            ? `Safety: ${l.safetyScore}/100. Percentile rank within your library — 100 = safest, 0 = least safe.`
+            ? `Safety: ${l.safetyScore}/100. Compared to your home — 50 = same as home, higher = safer.`
             : undefined
         }
       >

@@ -275,6 +275,8 @@ export const homeSettings = pgTable(
     homeAddress: text("home_address").notNull(),
     homeLat: numeric("home_lat", { precision: 9, scale: 6 }).notNull(),
     homeLng: numeric("home_lng", { precision: 9, scale: 6 }).notNull(),
+    safetyRaw: numeric("safety_raw"),
+    safetyBreakdown: jsonb("safety_breakdown"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

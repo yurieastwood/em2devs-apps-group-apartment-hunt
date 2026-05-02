@@ -32,8 +32,10 @@ export async function setHome(
   address: string,
   lat: number,
   lng: number,
+  safety: { raw: number; breakdown: unknown } | null,
 ): Promise<void> {
   const existing = await getHome(scope);
+  const rawStr = safety ? safety.raw.toString() : null;
   if (existing) {
     await db
       .update(homeSettings)
@@ -41,6 +43,8 @@ export async function setHome(
         homeAddress: address,
         homeLat: lat.toString(),
         homeLng: lng.toString(),
+        safetyRaw: rawStr,
+        safetyBreakdown: safety?.breakdown ?? null,
         updatedAt: new Date(),
       })
       .where(eq(homeSettings.id, existing.id));
@@ -52,5 +56,7 @@ export async function setHome(
     homeAddress: address,
     homeLat: lat.toString(),
     homeLng: lng.toString(),
+    safetyRaw: rawStr,
+    safetyBreakdown: safety?.breakdown ?? null,
   });
 }
