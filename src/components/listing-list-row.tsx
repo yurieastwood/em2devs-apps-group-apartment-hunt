@@ -44,6 +44,7 @@ export type ListingListRowProps = {
   availability?: string;
   neighborhood?: string | null;
   district?: string | null;
+  safetyScore?: number | null;
   listingLat?: number | null;
   listingLng?: number | null;
   selected?: boolean;
@@ -66,6 +67,7 @@ export function ListingListRow({
   availability,
   neighborhood,
   district,
+  safetyScore,
   listingLat,
   listingLng,
   selected,
@@ -122,6 +124,11 @@ export function ListingListRow({
             {nearestPkRating != null ? (
               <span title="Nearest PK school rating">
                 🏫 {nearestPkRating}/10
+              </span>
+            ) : null}
+            {safetyScore != null ? (
+              <span title={`Safety score (0–100, higher is safer): ${safetyScore}`}>
+                🛡 {safetyScore}
               </span>
             ) : null}
           </p>

@@ -91,6 +91,22 @@ Family-scoped visibility via Clerk Organizations.
 
 Still planned: a backfill UI for moving pre-orgs personal listings into an active org (today the user runs SQL); disabling public sign-up in Clerk so only invited members can join.
 
+## Slice 4.1 — Listing safety score
+
+Per-listing 0–100 score derived from local crime activity in a configurable radius around the listing.
+
+- **Schema**: `listings.safety_score` (integer, nullable) and `listings.safety_breakdown` (jsonb, nullable). Score is the displayable number; breakdown carries the raw value, radius, computed-at timestamp, source identifier, per-category counts (violent / property / quality-of-life), and per-time-bucket counts (last 30d / 6mo / 2y) for the detail page.
+- **Per-city router** (`src/lib/safety/index.ts`): `computeSafetyScore(lat, lng)` walks an `ADAPTERS[]` array; each adapter does its own bbox check and returns null when the coordinate is outside its supported area. Today the only entry is the Chicago adapter; future cities slot in here.
+- **Chicago adapter** (`src/lib/safety/chicago.ts`): pulls reported incidents from the City of Chicago Socrata endpoint (`data.cityofchicago.org/resource/ijzp-q8t2.json`), filtering with `within_circle(location, lat, lng, 402)` and `date > <2 years ago>`. Free, no key. Maps each row's `primary_type` to one of three categories (violent / property / quality-of-life) using FBI Part-1 classifications. Applies severity weights (5 / 2 / 1) × time-decay weights (1.0 for last 30d, 0.5 for last 6mo, 0.2 for last 2y, 0 older) to compute the raw score; normalizes to 0–100 via `100 × (1 − raw / 60)` with clamp (60 ≈ Chicago-wide 95th-percentile raw).
+- **Persistence**: `createListingFromUrl` computes once at import. `refreshListing` recomputes on every refresh and writes the score *and* breakdown.
+- **Audit log**: `safetyScore` is a tracked field in `listing_changes` alongside `price` and `availability` — score changes from refresh-to-refresh show up in the detail page's change history and the home page's recent-changes banner. The change-log formatters render the field as "Safety score: X → Y".
+- **Display**:
+  - Cards / list rows: small color-coded "🛡 X" pill alongside the PK rating (green ≥80, lime ≥60, amber ≥40, orange ≥20, red <20).
+  - Table: dedicated "Safety" column with the same color coding via `safetyClass`.
+  - Detail page: `<ListingSafetySection>` with the big number, raw value, radius, per-category counts (violent / property / quality-of-life), per-bucket counts, and a "computed at" footer.
+- **Sort**: `safetyScore` added as a static sort field (label "Safety"). Default direction asc — flip to desc to surface safest listings first.
+- **Filter**: `<ThresholdGroup label="Min Safety">` with preset chips (0 / 50 / 70 / 90) and a custom 0–100 input. Hides any listing whose score is below the threshold (and hides those with null scores when threshold > 0).
+
 ## Slice 4.0 — Soft delete + Trash
 
 Listings can be restored after deletion, audit history survives, and the cron keeps updating trashed listings so they're current if/when restored.

@@ -9,6 +9,7 @@ import { parseZillow } from "../extract/parsers/zillow";
 import type { ParsedListing } from "../extract/types";
 import { normalizeListingUrl } from "../url-normalize";
 import { rehostListingPhotos } from "./rehost-photos";
+import { computeSafetyScore } from "../safety";
 import { resolveLocale } from "./resolve-locale";
 
 type Parser = (url: string, html: string) => ParsedListing;
@@ -85,6 +86,10 @@ export async function createListingFromUrl(
     latitude: parsed.latitude,
     longitude: parsed.longitude,
   });
+  const safety = await computeSafetyScore(
+    parsed.latitude,
+    parsed.longitude,
+  );
 
   const [inserted] = await db
     .insert(listings)
@@ -110,6 +115,8 @@ export async function createListingFromUrl(
       district,
       availability: parsed.availability,
       units: parsed.units,
+      safetyScore: safety?.score ?? null,
+      safetyBreakdown: safety?.breakdown ?? null,
       lastCheckedAt: new Date(),
       raw: parsed.raw,
     })

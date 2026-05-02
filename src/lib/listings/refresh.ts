@@ -21,6 +21,7 @@ import {
   recomputeDistancesForListing,
 } from "../places/poi-distances";
 import { rehostListingPhotos } from "./rehost-photos";
+import { computeSafetyScore } from "../safety";
 import { resolveLocale } from "./resolve-locale";
 
 type Headline = {
@@ -90,7 +91,7 @@ export type RefreshOutcome =
   | { kind: "fetch_failed"; status: number; triedProfiles: string[] };
 
 export type RefreshChange = {
-  field: "price" | "availability";
+  field: "price" | "availability" | "safetyScore";
   oldValue: string | null;
   newValue: string | null;
 };
@@ -99,6 +100,7 @@ function diffListing(
   current: Listing,
   parsedPrice: number | null,
   parsedAvailability: Availability,
+  newSafetyScore: number | null,
 ): RefreshChange[] {
   const out: RefreshChange[] = [];
   if (current.priceUsd !== parsedPrice) {
@@ -113,6 +115,14 @@ function diffListing(
       field: "availability",
       oldValue: current.availability,
       newValue: parsedAvailability,
+    });
+  }
+  if (current.safetyScore !== newSafetyScore) {
+    out.push({
+      field: "safetyScore",
+      oldValue:
+        current.safetyScore != null ? String(current.safetyScore) : null,
+      newValue: newSafetyScore != null ? String(newSafetyScore) : null,
     });
   }
   return out;
@@ -141,7 +151,12 @@ export async function refreshListing(
   // record the change. Any other non-200 (5xx, anti-bot 403) is transient and
   // shouldn't flip availability.
   if (fetched.status === 404) {
-    const changes = diffListing(current, current.priceUsd, "unavailable");
+    const changes = diffListing(
+      current,
+      current.priceUsd,
+      "unavailable",
+      current.safetyScore,
+    );
     if (changes.length > 0) {
       await db.insert(listingChanges).values(
         changes.map((c) => ({
@@ -181,7 +196,6 @@ export async function refreshListing(
 
   const parsed = parser(current.sourceUrl, fetched.html);
   const headline = computeHeadline(current, parsed);
-  const changes = diffListing(current, headline.price, parsed.availability);
 
   const { neighborhood, district } = await resolveLocale({
     parsedNeighborhood: parsed.neighborhood,
@@ -191,6 +205,17 @@ export async function refreshListing(
     latitude: parsed.latitude,
     longitude: parsed.longitude,
   });
+
+  const safety = await computeSafetyScore(parsed.latitude, parsed.longitude);
+  const newSafetyScore = safety?.score ?? current.safetyScore;
+  const newSafetyBreakdown = safety?.breakdown ?? current.safetyBreakdown;
+
+  const changes = diffListing(
+    current,
+    headline.price,
+    parsed.availability,
+    newSafetyScore,
+  );
 
   if (changes.length > 0) {
     await db.insert(listingChanges).values(
@@ -224,6 +249,8 @@ export async function refreshListing(
       neighborhood,
       district,
       units: parsed.units,
+      safetyScore: newSafetyScore,
+      safetyBreakdown: newSafetyBreakdown,
       // Refresh raw too — at import time it captures what the parser saw
       // then; without re-saving it on refresh, raw drifts away from the
       // current page and makes diagnosing parser issues impossible.

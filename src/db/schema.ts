@@ -38,6 +38,8 @@ export const listings = pgTable(
     district: text("district"),
     units: jsonb("units"),
     headlineLocked: boolean("headline_locked").notNull().default(false),
+    safetyScore: integer("safety_score"),
+    safetyBreakdown: jsonb("safety_breakdown"),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     availability: text("availability").notNull().default("unknown"),
     lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),

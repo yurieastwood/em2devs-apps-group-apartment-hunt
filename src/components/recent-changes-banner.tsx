@@ -83,6 +83,13 @@ function formatChange(
   return `${oldValue ?? "—"} → ${newValue ?? "—"}`;
 }
 
+function fieldLabel(field: string): string {
+  if (field === "safetyScore") return "Safety";
+  if (field === "price") return "Price";
+  if (field === "availability") return "Availability";
+  return field;
+}
+
 export function RecentChangesBanner({
   changes,
 }: {
@@ -105,7 +112,8 @@ export function RecentChangesBanner({
               {c.listingLabel}
             </Link>{" "}
             <span className="text-xs">
-              · {c.field}: {formatChange(c.field, c.oldValue, c.newValue)}
+              · {fieldLabel(c.field)}:{" "}
+              {formatChange(c.field, c.oldValue, c.newValue)}
             </span>
           </li>
         ))}

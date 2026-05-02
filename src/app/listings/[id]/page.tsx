@@ -15,6 +15,7 @@ import { HomeMap } from "@/components/home-map";
 import { PriorityEditor } from "@/components/priority-editor";
 import { RefreshListingButton } from "@/components/refresh-listing-button";
 import { ListingChangesLog } from "@/components/listing-changes-log";
+import { ListingSafetySection } from "@/components/listing-safety-section";
 import { ListingUnitsSection } from "@/components/listing-units-section";
 import { getPois } from "@/lib/points-of-interest";
 
@@ -290,6 +291,11 @@ export default async function ListingDetailPage({
       />
 
       <NearbySchools listingId={listing.id} />
+
+      <ListingSafetySection
+        score={listing.safetyScore}
+        breakdown={listing.safetyBreakdown}
+      />
 
       <ListingChangesLog listingId={listing.id} />
 

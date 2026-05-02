@@ -20,6 +20,9 @@ function formatChange(
   if (field === "availability") {
     return `Availability: ${oldValue ?? "—"} → ${newValue ?? "—"}`;
   }
+  if (field === "safetyScore") {
+    return `Safety score: ${oldValue ?? "—"} → ${newValue ?? "—"}`;
+  }
   return `${field}: ${oldValue ?? "—"} → ${newValue ?? "—"}`;
 }
 

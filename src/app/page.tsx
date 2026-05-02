@@ -231,6 +231,7 @@ export default async function HomePage() {
       priceUsd: l.priceUsd,
       priority: l.priority,
       availability: l.availability,
+      safetyScore: l.safetyScore,
       latitude: l.latitude ? parseFloat(l.latitude) : null,
       longitude: l.longitude ? parseFloat(l.longitude) : null,
       nearestPkRating: nearestPkRatingMap.get(l.id) ?? null,

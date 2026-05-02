@@ -41,6 +41,7 @@ export type HomeListingItem = {
   priceUsd: number | null;
   priority: number | null;
   nearestPkRating: number | null;
+  safetyScore: number | null;
   availability: string;
   latitude: number | null;
   longitude: number | null;
@@ -67,6 +68,7 @@ const STATIC_SORT_FIELDS: string[] = [
   "baths",
   "sqft",
   "pkRating",
+  "safetyScore",
 ];
 
 const STATIC_SORT_FIELD_LABEL: Record<string, string> = {
@@ -77,6 +79,7 @@ const STATIC_SORT_FIELD_LABEL: Record<string, string> = {
   baths: "Bathrooms",
   sqft: "Sq ft",
   pkRating: "PK rating",
+  safetyScore: "Safety",
 };
 
 const DEFAULT_SORT: SortCriterion[] = [
@@ -125,6 +128,8 @@ function fieldValue(field: string, l: HomeListingItem): number | null {
       return l.squareFeet;
     case "pkRating":
       return l.nearestPkRating;
+    case "safetyScore":
+      return l.safetyScore;
     default:
       return null;
   }
@@ -221,6 +226,7 @@ export function ListingsBrowser({
   const [minBaths, setMinBaths] = useState(0);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [minPkRating, setMinPkRating] = useState(0);
+  const [minSafetyScore, setMinSafetyScore] = useState(0);
   const [activeLabels, setActiveLabels] = useState<Set<string>>(new Set());
   const [activeNeighborhoods, setActiveNeighborhoods] = useState<Set<string>>(
     new Set(),
@@ -274,6 +280,11 @@ export function ListingsBrowser({
           return false;
         }
       }
+      if (minSafetyScore > 0) {
+        if (l.safetyScore == null || l.safetyScore < minSafetyScore) {
+          return false;
+        }
+      }
       if (activeLabels.size > 0) {
         const hit = l.labels.some((lbl) => activeLabels.has(lbl.id));
         if (!hit) return false;
@@ -304,6 +315,7 @@ export function ListingsBrowser({
     minBaths,
     maxPrice,
     minPkRating,
+    minSafetyScore,
     activeLabels,
     activeNeighborhoods,
     activeDistricts,
@@ -477,6 +489,14 @@ export function ListingsBrowser({
           onChange={setMinPkRating}
           allowCustom
           customMax={10}
+        />
+        <ThresholdGroup
+          label="Min Safety"
+          options={[0, 50, 70, 90] as const}
+          active={minSafetyScore}
+          onChange={setMinSafetyScore}
+          allowCustom
+          customMax={100}
         />
         {scopeLabels.length > 0 ? (
           <LabelFilterGroup
@@ -749,6 +769,26 @@ function TextFilterGroup({
   );
 }
 
+function safetyClass(score: number): string {
+  if (score >= 80) return "text-emerald-700 dark:text-emerald-400";
+  if (score >= 60) return "text-lime-700 dark:text-lime-400";
+  if (score >= 40) return "text-amber-700 dark:text-amber-400";
+  if (score >= 20) return "text-orange-700 dark:text-orange-400";
+  return "text-destructive";
+}
+
+function SafetyBadge({ score }: { score: number | null }) {
+  if (score == null) return null;
+  return (
+    <span
+      className={`tabular-nums ${safetyClass(score)}`}
+      title={`Safety score (0–100, higher is safer): ${score}`}
+    >
+      🛡 {score}
+    </span>
+  );
+}
+
 function UnavailableBadge({ availability }: { availability: string }) {
   if (availability !== "unavailable") return null;
   return (
@@ -882,6 +922,7 @@ function CardsView({
                     🏫 {l.nearestPkRating}/10
                   </span>
                 ) : null}
+                <SafetyBadge score={l.safetyScore} />
               </p>
               {l.poiDistances.length > 0 ? (
                 <p className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
@@ -976,6 +1017,7 @@ function ListView({
           availability={l.availability}
           neighborhood={l.neighborhood}
           district={l.district}
+          safetyScore={l.safetyScore}
           listingLat={l.latitude}
           listingLng={l.longitude}
           selected={selectedListingId === l.id}
@@ -1016,6 +1058,7 @@ function TableView({
             <th className="px-3 py-2 text-right font-medium">Sqft</th>
             <th className="px-3 py-2 text-right font-medium">Price</th>
             <th className="px-3 py-2 text-right font-medium">PK</th>
+            <th className="px-3 py-2 text-right font-medium">Safety</th>
             <th className="px-3 py-2 text-left font-medium">Transit</th>
             <th className="px-3 py-2 text-left font-medium">Labels</th>
             <th className="px-3 py-2 text-left font-medium">Status</th>
@@ -1118,6 +1161,18 @@ function TableRow({
       </td>
       <td className="px-3 py-2 text-right tabular-nums">
         {l.nearestPkRating != null ? `${l.nearestPkRating}/10` : "—"}
+      </td>
+      <td
+        className={`px-3 py-2 text-right tabular-nums ${
+          l.safetyScore != null ? safetyClass(l.safetyScore) : ""
+        }`}
+        title={
+          l.safetyScore != null
+            ? `Safety score (0–100, higher is safer): ${l.safetyScore}`
+            : undefined
+        }
+      >
+        {l.safetyScore != null ? l.safetyScore : "—"}
       </td>
       <td className="px-3 py-2">
         {l.poiDistances.length > 0 ? (
