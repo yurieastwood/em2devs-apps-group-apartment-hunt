@@ -17,6 +17,99 @@ function isBreakdown(v: unknown): v is SafetyBreakdown {
   );
 }
 
+function isBreakdownWithMatrix(
+  v: unknown,
+): v is SafetyBreakdown & {
+  byCategoryAndBucket: NonNullable<SafetyBreakdown["byCategoryAndBucket"]>;
+} {
+  return (
+    isBreakdown(v) &&
+    "byCategoryAndBucket" in v &&
+    typeof (v as SafetyBreakdown).byCategoryAndBucket === "object" &&
+    (v as SafetyBreakdown).byCategoryAndBucket !== null
+  );
+}
+
+const CATEGORY_LABELS: Record<keyof SafetyBreakdown["byCategory"], string> = {
+  violent: "Violent",
+  property: "Property",
+  qualityOfLife: "Quality of life",
+};
+
+const BUCKET_LABELS: Record<keyof SafetyBreakdown["byBucket"], string> = {
+  last30Days: "Last 30 days",
+  last6Months: "Last 6 months",
+  last2Years: "Last 2 years",
+};
+
+function SafetyMatrix({
+  breakdown,
+}: {
+  breakdown: SafetyBreakdown & {
+    byCategoryAndBucket: NonNullable<SafetyBreakdown["byCategoryAndBucket"]>;
+  };
+}) {
+  const cats = Object.keys(CATEGORY_LABELS) as Array<
+    keyof typeof CATEGORY_LABELS
+  >;
+  const buckets = Object.keys(BUCKET_LABELS) as Array<
+    keyof typeof BUCKET_LABELS
+  >;
+  const matrix = breakdown.byCategoryAndBucket;
+  const colTotals = buckets.map((b) =>
+    cats.reduce((sum, c) => sum + (matrix[c]?.[b] ?? 0), 0),
+  );
+  const rowTotals = cats.map((c) =>
+    buckets.reduce((sum, b) => sum + (matrix[c]?.[b] ?? 0), 0),
+  );
+  const grandTotal = rowTotals.reduce((a, b) => a + b, 0);
+
+  return (
+    <div className="border border-border rounded overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/40 text-xs text-muted-foreground">
+          <tr>
+            <th className="px-3 py-2 text-left font-medium">Category</th>
+            {buckets.map((b) => (
+              <th key={b} className="px-3 py-2 text-right font-medium">
+                {BUCKET_LABELS[b]}
+              </th>
+            ))}
+            <th className="px-3 py-2 text-right font-medium">Total</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {cats.map((c, i) => (
+            <tr key={c}>
+              <td className="px-3 py-2 font-medium">{CATEGORY_LABELS[c]}</td>
+              {buckets.map((b) => (
+                <td
+                  key={b}
+                  className="px-3 py-2 text-right tabular-nums"
+                >
+                  {matrix[c]?.[b] ?? 0}
+                </td>
+              ))}
+              <td className="px-3 py-2 text-right tabular-nums font-medium">
+                {rowTotals[i]}
+              </td>
+            </tr>
+          ))}
+          <tr className="bg-muted/40 font-medium">
+            <td className="px-3 py-2">Total</td>
+            {colTotals.map((t, i) => (
+              <td key={i} className="px-3 py-2 text-right tabular-nums">
+                {t}
+              </td>
+            ))}
+            <td className="px-3 py-2 text-right tabular-nums">{grandTotal}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function fmtMiles(m: number): string {
   return `${(m / 1609.344).toFixed(2)} mi`;
 }
@@ -169,36 +262,48 @@ export function ListingSafetySection({
       ) : null}
 
       {totals ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-          <div className="border border-border rounded p-3">
-            <p className="text-xs text-muted-foreground mb-1">Violent</p>
-            <p className="tabular-nums">{totals.byCategory.violent.count}</p>
+        isBreakdownWithMatrix(breakdown) ? (
+          <SafetyMatrix breakdown={breakdown} />
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+            <div className="border border-border rounded p-3">
+              <p className="text-xs text-muted-foreground mb-1">Violent</p>
+              <p className="tabular-nums">{totals.byCategory.violent.count}</p>
+            </div>
+            <div className="border border-border rounded p-3">
+              <p className="text-xs text-muted-foreground mb-1">Property</p>
+              <p className="tabular-nums">
+                {totals.byCategory.property.count}
+              </p>
+            </div>
+            <div className="border border-border rounded p-3">
+              <p className="text-xs text-muted-foreground mb-1">
+                Quality of life
+              </p>
+              <p className="tabular-nums">
+                {totals.byCategory.qualityOfLife.count}
+              </p>
+            </div>
+            <div className="border border-border rounded p-3">
+              <p className="text-xs text-muted-foreground mb-1">
+                Last 30 days
+              </p>
+              <p className="tabular-nums">{totals.byBucket.last30Days}</p>
+            </div>
+            <div className="border border-border rounded p-3">
+              <p className="text-xs text-muted-foreground mb-1">
+                Last 6 months
+              </p>
+              <p className="tabular-nums">{totals.byBucket.last6Months}</p>
+            </div>
+            <div className="border border-border rounded p-3">
+              <p className="text-xs text-muted-foreground mb-1">
+                Last 2 years
+              </p>
+              <p className="tabular-nums">{totals.byBucket.last2Years}</p>
+            </div>
           </div>
-          <div className="border border-border rounded p-3">
-            <p className="text-xs text-muted-foreground mb-1">Property</p>
-            <p className="tabular-nums">{totals.byCategory.property.count}</p>
-          </div>
-          <div className="border border-border rounded p-3">
-            <p className="text-xs text-muted-foreground mb-1">
-              Quality of life
-            </p>
-            <p className="tabular-nums">
-              {totals.byCategory.qualityOfLife.count}
-            </p>
-          </div>
-          <div className="border border-border rounded p-3">
-            <p className="text-xs text-muted-foreground mb-1">Last 30 days</p>
-            <p className="tabular-nums">{totals.byBucket.last30Days}</p>
-          </div>
-          <div className="border border-border rounded p-3">
-            <p className="text-xs text-muted-foreground mb-1">Last 6 months</p>
-            <p className="tabular-nums">{totals.byBucket.last6Months}</p>
-          </div>
-          <div className="border border-border rounded p-3">
-            <p className="text-xs text-muted-foreground mb-1">Last 2 years</p>
-            <p className="tabular-nums">{totals.byBucket.last2Years}</p>
-          </div>
-        </div>
+        )
       ) : null}
 
       {totals ? (

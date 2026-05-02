@@ -184,6 +184,13 @@ export async function computeChicagoSafety(
     last6Months: 0,
     last2Years: 0,
   };
+  const byCategoryAndBucket: NonNullable<
+    SafetyBreakdown["byCategoryAndBucket"]
+  > = {
+    violent: { last30Days: 0, last6Months: 0, last2Years: 0 },
+    property: { last30Days: 0, last6Months: 0, last2Years: 0 },
+    qualityOfLife: { last30Days: 0, last6Months: 0, last2Years: 0 },
+  };
 
   let raw = 0;
   const now = Date.now();
@@ -201,7 +208,10 @@ export async function computeChicagoSafety(
     byCategory[cat].count += 1;
     byCategory[cat].weighted += points;
     const bucket = timeBucket(ageDays);
-    if (bucket) byBucket[bucket] += 1;
+    if (bucket) {
+      byBucket[bucket] += 1;
+      byCategoryAndBucket[cat][bucket] += 1;
+    }
   }
 
   const normalized = clampScore(100 * (1 - raw / RAW_BENCHMARK));
@@ -215,6 +225,7 @@ export async function computeChicagoSafety(
       source: "chicago-open-data",
       byCategory,
       byBucket,
+      byCategoryAndBucket,
     },
   };
 }

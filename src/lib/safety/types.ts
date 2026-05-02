@@ -21,6 +21,13 @@ export type SafetyBreakdown = {
   byCategory: Record<SafetyCategory, { count: number; weighted: number }>;
   // Counts per time bucket — gives a sense of recency at a glance.
   byBucket: Record<SafetyTimeBucket, number>;
+  // Full category × bucket grid for the detail-page breakdown table.
+  // Optional so that older breakdowns (before this field was added) still
+  // typecheck; the UI falls back to byCategory/byBucket when absent.
+  byCategoryAndBucket?: Record<
+    SafetyCategory,
+    Record<SafetyTimeBucket, number>
+  >;
 };
 
 export type SafetyResult = {
