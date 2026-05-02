@@ -46,6 +46,12 @@ async function getViewMode(): Promise<ViewMode> {
   return "cards";
 }
 
+function readSafetyRaw(breakdown: unknown): number | null {
+  if (!breakdown || typeof breakdown !== "object") return null;
+  const raw = (breakdown as { raw?: unknown }).raw;
+  return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+}
+
 function buildMapData(
   home: {
     homeLat: string;
@@ -218,6 +224,34 @@ export default async function HomePage() {
     distMap.set(r.listingId, arr);
   }
 
+  // Library-relative safety score: min-max scale across the user's
+  // currently-visible listings. Best raw → 100, worst raw → 0, others
+  // linear in between. No magic benchmark constant — the formula
+  // self-calibrates to whatever's in the library. See
+  // src/lib/safety/chicago.ts for the alternative scoring options
+  // (percentile, Chicago-wide percentile) we documented for later.
+  const rawSafetyValues: number[] = [];
+  for (const l of allListings) {
+    const raw = readSafetyRaw(l.safetyBreakdown);
+    if (raw != null) rawSafetyValues.push(raw);
+  }
+  const safetyMin =
+    rawSafetyValues.length > 0 ? Math.min(...rawSafetyValues) : null;
+  const safetyMax =
+    rawSafetyValues.length > 0 ? Math.max(...rawSafetyValues) : null;
+  const relativeSafetyScore = (raw: number | null): number | null => {
+    if (raw == null) return null;
+    if (
+      safetyMin == null ||
+      safetyMax == null ||
+      safetyMax === safetyMin
+    ) {
+      return 50;
+    }
+    const score = (100 * (safetyMax - raw)) / (safetyMax - safetyMin);
+    return Math.round(Math.max(0, Math.min(100, score)));
+  };
+
   const items: HomeListingItem[] = await Promise.all(
     allListings.map(async (l) => ({
       id: l.id,
@@ -231,7 +265,7 @@ export default async function HomePage() {
       priceUsd: l.priceUsd,
       priority: l.priority,
       availability: l.availability,
-      safetyScore: l.safetyScore,
+      safetyScore: relativeSafetyScore(readSafetyRaw(l.safetyBreakdown)),
       latitude: l.latitude ? parseFloat(l.latitude) : null,
       longitude: l.longitude ? parseFloat(l.longitude) : null,
       nearestPkRating: nearestPkRatingMap.get(l.id) ?? null,

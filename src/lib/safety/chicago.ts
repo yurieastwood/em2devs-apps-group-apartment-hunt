@@ -39,20 +39,29 @@ const SEVERITY_WEIGHT: Record<SafetyCategory, number> = {
   qualityOfLife: 1,
 };
 
-// Calibration anchor: raw at which the score hits 0 ("very unsafe"). Set to
-// 1000 based on the user's full 103-listing library: median ~514, mean
-// ~614, p95 ~1187, max ~4175. Anchoring B at ~2×median puts:
-//   raw    0 → 100 (no incidents)
-//   raw  147 →  85 (safer than average)
-//   raw  514 →  49 (median listing)
-//   raw  614 →  39 (mean listing)
-//   raw 1000 →   0 (very unsafe)
-//   raw 1187 →   0 (clamped — top 5% of the user's library)
-//   raw 4175 →   0 (clamped — outlier)
-// Re-tune by dropping a fresh distribution snapshot from this query:
-//   SELECT AVG((safety_breakdown->>'raw')::numeric) FROM listings WHERE
-//     safety_breakdown IS NOT NULL AND deleted_at IS NULL;
-// and choosing B ≈ 2 × the average.
+// Per-listing benchmark used by the *adapter*'s built-in 0–100 score. The
+// home page and detail page override this with a min-max-relative score
+// computed across the user's library — see src/app/page.tsx and
+// src/app/listings/[id]/page.tsx. The adapter's number is kept as a stable
+// fallback (and as the value persisted in `listings.safety_score` for the
+// audit log).
+//
+// Future scoring options we documented for later but haven't implemented:
+//
+//   Option 2: Percentile rank within library
+//   ----------------------------------------
+//   Sort the library's raw values; assign each listing a score equal to
+//   100 × (1 − rank/N). Cleaner spread than min-max because outliers
+//   don't compress everyone else, but recomputes when listings are added.
+//
+//   Option 3: Pre-computed Chicago-wide percentile
+//   ----------------------------------------------
+//   Instead of using the user's library as the reference distribution,
+//   query the Chicago Open Data dataset across a representative grid of
+//   coordinates (or all listing coords stored anywhere) to derive a fixed
+//   set of percentile breakpoints. Hardcode them as constants. Score is
+//   stable across library changes and meaningful absolutely. Higher up-
+//   front cost (one-time empirical seed); robust afterward.
 const RAW_BENCHMARK = 1000;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
