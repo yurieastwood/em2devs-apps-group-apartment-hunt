@@ -39,7 +39,16 @@ const SEVERITY_WEIGHT: Record<SafetyCategory, number> = {
   qualityOfLife: 1,
 };
 
-const RAW_BENCHMARK = 60; // approx Chicago-wide 95th-pct raw score
+// Calibration anchor: raw at which the score hits 0 ("very unsafe"). Set to
+// 400 based on observed Chicago raw values across a sample library: median
+// ~220, range 147–280+. With B=400 the formula `100 × (1 − raw/B)` puts:
+//   raw   0 → 100 (very safe)
+//   raw  50 →  87 (much safer than average)
+//   raw 200 →  50 (Chicago average)
+//   raw 280 →  30 (busier than average)
+//   raw 400 →   0 (very unsafe)
+// Bump or lower this single value to tune the spread for your data.
+const RAW_BENCHMARK = 400;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TIME_DECAY: Array<{ maxAgeDays: number; weight: number }> = [
