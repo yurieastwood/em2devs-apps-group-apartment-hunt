@@ -40,15 +40,20 @@ const SEVERITY_WEIGHT: Record<SafetyCategory, number> = {
 };
 
 // Calibration anchor: raw at which the score hits 0 ("very unsafe"). Set to
-// 400 based on observed Chicago raw values across a sample library: median
-// ~220, range 147–280+. With B=400 the formula `100 × (1 − raw/B)` puts:
-//   raw   0 → 100 (very safe)
-//   raw  50 →  87 (much safer than average)
-//   raw 200 →  50 (Chicago average)
-//   raw 280 →  30 (busier than average)
-//   raw 400 →   0 (very unsafe)
-// Bump or lower this single value to tune the spread for your data.
-const RAW_BENCHMARK = 400;
+// 1000 based on the user's full 103-listing library: median ~514, mean
+// ~614, p95 ~1187, max ~4175. Anchoring B at ~2×median puts:
+//   raw    0 → 100 (no incidents)
+//   raw  147 →  85 (safer than average)
+//   raw  514 →  49 (median listing)
+//   raw  614 →  39 (mean listing)
+//   raw 1000 →   0 (very unsafe)
+//   raw 1187 →   0 (clamped — top 5% of the user's library)
+//   raw 4175 →   0 (clamped — outlier)
+// Re-tune by dropping a fresh distribution snapshot from this query:
+//   SELECT AVG((safety_breakdown->>'raw')::numeric) FROM listings WHERE
+//     safety_breakdown IS NOT NULL AND deleted_at IS NULL;
+// and choosing B ≈ 2 × the average.
+const RAW_BENCHMARK = 1000;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TIME_DECAY: Array<{ maxAgeDays: number; weight: number }> = [
