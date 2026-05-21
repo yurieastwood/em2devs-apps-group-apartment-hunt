@@ -17,6 +17,8 @@ type Props = {
   neighborhood: string | null;
   coverUrl: string | null;
   deletedAt: string;
+  checked?: boolean;
+  onToggleCheck?: () => void;
 };
 
 function fmtPrice(n: number | null): string | null {
@@ -43,6 +45,8 @@ export function TrashRow({
   neighborhood,
   coverUrl,
   deletedAt,
+  checked,
+  onToggleCheck,
 }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +76,17 @@ export function TrashRow({
 
   return (
     <li className="flex items-start gap-4 px-4 py-3 hover:bg-muted/40 transition-colors">
+      {onToggleCheck != null ? (
+        <div className="flex items-center pt-1 shrink-0">
+          <input
+            type="checkbox"
+            checked={checked ?? false}
+            onChange={onToggleCheck}
+            className="w-4 h-4 cursor-pointer"
+            aria-label="Select listing"
+          />
+        </div>
+      ) : null}
       <div className="w-20 h-16 bg-muted rounded shrink-0 overflow-hidden">
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

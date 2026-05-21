@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
@@ -73,6 +73,43 @@ export async function permanentlyDeleteListingAction(
       await deleteObjects(photos.map((p) => p.r2Key));
     } catch (err) {
       console.error("r2 cleanup failed for listing", listingId, err);
+    }
+  }
+
+  revalidatePath("/listings/deleted");
+  return { ok: true };
+}
+
+export async function bulkPermanentlyDeleteListingsAction(
+  listingIds: string[],
+): Promise<TrashActionResult> {
+  if (listingIds.length === 0) return { ok: true };
+  const { userId, orgId } = await auth();
+  if (!userId) return { ok: false, reason: "Not signed in" };
+  if (!(await isOrgAdmin())) return { ok: false, reason: "Admins only" };
+
+  const scope = deletedListingScope({ userId, orgId });
+  if (!scope) return { ok: false, reason: "No active scope" };
+
+  const photos = await db
+    .select({ r2Key: listingPhotos.r2Key })
+    .from(listingPhotos)
+    .where(inArray(listingPhotos.listingId, listingIds));
+
+  const result = await db
+    .delete(listings)
+    .where(and(inArray(listings.id, listingIds), scope))
+    .returning({ id: listings.id });
+
+  if (result.length === 0) {
+    return { ok: false, reason: "No listings found in trash" };
+  }
+
+  if (photos.length > 0) {
+    try {
+      await deleteObjects(photos.map((p) => p.r2Key));
+    } catch (err) {
+      console.error("r2 bulk cleanup failed for listings", listingIds, err);
     }
   }
 

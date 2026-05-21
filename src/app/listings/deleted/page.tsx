@@ -7,7 +7,7 @@ import { listingPhotos, listings } from "@/db/schema";
 import { isOrgAdmin } from "@/lib/auth/roles";
 import { deletedListingScope } from "@/lib/listings/access";
 import { urlFor } from "@/lib/storage/r2";
-import { TrashRow } from "./trash-row";
+import { TrashBrowser } from "./trash-browser";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,15 +76,7 @@ export default async function DeletedListingsPage() {
         </Link>
       </div>
 
-      {items.length === 0 ? (
-        <p className="text-muted-foreground">Trash is empty.</p>
-      ) : (
-        <ul className="border border-border rounded divide-y divide-border">
-          {items.map((it) => (
-            <TrashRow key={it.listingId} {...it} />
-          ))}
-        </ul>
-      )}
+      <TrashBrowser items={items} />
     </main>
   );
 }
