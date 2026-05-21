@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { DeleteListingButton } from "@/components/delete-listing-button";
+import { bulkDeleteListingsAction } from "@/app/listings/[id]/actions";
 import { HomeMap, type HomeMapProps } from "@/components/home-map";
 import { ListingListRow } from "@/components/listing-list-row";
 import { PriorityEditor } from "@/components/priority-editor";
@@ -240,6 +241,8 @@ export function ListingsBrowser({
     null,
   );
   const [autoScroll, setAutoScroll] = useState(true);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [bulkPending, startBulkTransition] = useTransition();
 
   const allNeighborhoods = useMemo(() => {
     const set = new Set<string>();
@@ -419,6 +422,30 @@ export function ListingsBrowser({
     setSelectedListingId((prev) => (prev === id ? null : id));
   }
 
+  function toggleCheck(id: string) {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function handleBulkDelete() {
+    const count = checkedIds.size;
+    if (
+      !window.confirm(
+        `Move ${count} listing${count === 1 ? "" : "s"} to Trash?`,
+      )
+    )
+      return;
+    const ids = Array.from(checkedIds);
+    startBulkTransition(async () => {
+      await bulkDeleteListingsAction(ids);
+      setCheckedIds(new Set());
+    });
+  }
+
   return (
     <div>
       <div className="mb-6">
@@ -563,20 +590,32 @@ export function ListingsBrowser({
           listings={visible}
           selectedListingId={selectedListingId}
           autoScroll={autoScroll}
+          checkedIds={checkedIds}
+          onToggleCheck={toggleCheck}
         />
       ) : viewMode === "table" ? (
         <TableView
           listings={visible}
           selectedListingId={selectedListingId}
           autoScroll={autoScroll}
+          checkedIds={checkedIds}
+          onToggleCheck={toggleCheck}
         />
       ) : (
         <ListView
           listings={visible}
           selectedListingId={selectedListingId}
           autoScroll={autoScroll}
+          checkedIds={checkedIds}
+          onToggleCheck={toggleCheck}
         />
       )}
+      <BulkActionBar
+        count={checkedIds.size}
+        onDelete={handleBulkDelete}
+        onClear={() => setCheckedIds(new Set())}
+        pending={bulkPending}
+      />
     </div>
   );
 }
@@ -849,10 +888,14 @@ function CardsView({
   listings,
   selectedListingId,
   autoScroll,
+  checkedIds,
+  onToggleCheck,
 }: {
   listings: HomeListingItem[];
   selectedListingId: string | null;
   autoScroll: boolean;
+  checkedIds: Set<string>;
+  onToggleCheck: (id: string) => void;
 }) {
   const ref = useScrollToSelected<HTMLUListElement>(
     selectedListingId,
@@ -961,11 +1004,22 @@ function CardsView({
             </div>
           </Link>
           <div className="px-4 pb-3 flex items-center justify-between gap-3">
-            <PriorityEditor
-              key={`pri-${l.id}-${l.priority ?? "null"}`}
-              listingId={l.id}
-              current={l.priority}
-            />
+            <div className="flex items-center gap-2">
+              {l.canDelete ? (
+                <input
+                  type="checkbox"
+                  checked={checkedIds.has(l.id)}
+                  onChange={() => onToggleCheck(l.id)}
+                  className="w-4 h-4 cursor-pointer"
+                  aria-label={`Select ${l.title ?? l.address ?? "listing"}`}
+                />
+              ) : null}
+              <PriorityEditor
+                key={`pri-${l.id}-${l.priority ?? "null"}`}
+                listingId={l.id}
+                current={l.priority}
+              />
+            </div>
             {l.canDelete ? (
               <DeleteListingButton
                 listingId={l.id}
@@ -984,10 +1038,14 @@ function ListView({
   listings,
   selectedListingId,
   autoScroll,
+  checkedIds,
+  onToggleCheck,
 }: {
   listings: HomeListingItem[];
   selectedListingId: string | null;
   autoScroll: boolean;
+  checkedIds: Set<string>;
+  onToggleCheck: (id: string) => void;
 }) {
   const ref = useScrollToSelected<HTMLUListElement>(
     selectedListingId,
@@ -1021,6 +1079,8 @@ function ListView({
           listingLat={l.latitude}
           listingLng={l.longitude}
           selected={selectedListingId === l.id}
+          checked={checkedIds.has(l.id)}
+          onToggleCheck={l.canDelete ? () => onToggleCheck(l.id) : undefined}
         />
       ))}
     </ul>
@@ -1031,10 +1091,14 @@ function TableView({
   listings,
   selectedListingId,
   autoScroll,
+  checkedIds,
+  onToggleCheck,
 }: {
   listings: HomeListingItem[];
   selectedListingId: string | null;
   autoScroll: boolean;
+  checkedIds: Set<string>;
+  onToggleCheck: (id: string) => void;
 }) {
   const ref = useScrollToSelected<HTMLDivElement>(
     selectedListingId,
@@ -1048,6 +1112,7 @@ function TableView({
       <table className="w-full text-sm">
         <thead className="bg-muted/40 text-xs text-muted-foreground">
           <tr>
+            <th className="px-3 py-2 w-8"></th>
             <th className="px-3 py-2 text-left font-medium">P</th>
             <th className="px-3 py-2 text-left font-medium">Photo</th>
             <th className="px-3 py-2 text-left font-medium">Address</th>
@@ -1071,6 +1136,8 @@ function TableView({
               key={l.id}
               listing={l}
               selected={selectedListingId === l.id}
+              checked={checkedIds.has(l.id)}
+              onToggleCheck={() => onToggleCheck(l.id)}
             />
           ))}
         </tbody>
@@ -1082,9 +1149,13 @@ function TableView({
 function TableRow({
   listing: l,
   selected,
+  checked,
+  onToggleCheck,
 }: {
   listing: HomeListingItem;
   selected: boolean;
+  checked: boolean;
+  onToggleCheck: () => void;
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const beds = asNum(l.bedrooms);
@@ -1098,6 +1169,17 @@ function TableRow({
           : ""
       }`}
     >
+      <td className="px-3 py-2">
+        {l.canDelete ? (
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={onToggleCheck}
+            className="w-4 h-4 cursor-pointer"
+            aria-label="Select listing"
+          />
+        ) : null}
+      </td>
       <td className="px-3 py-2 whitespace-nowrap">
         <PriorityEditor
           key={`pri-${l.id}-${l.priority ?? "null"}`}
@@ -1247,6 +1329,44 @@ function TableRow({
         />
       ) : null}
     </tr>
+  );
+}
+
+function BulkActionBar({
+  count,
+  onDelete,
+  onClear,
+  pending,
+}: {
+  count: number;
+  onDelete: () => void;
+  onClear: () => void;
+  pending: boolean;
+}) {
+  if (count === 0) return null;
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-xl border border-border bg-background shadow-xl">
+      <span className="text-sm font-medium tabular-nums">
+        {count} {count === 1 ? "listing" : "listings"} selected
+      </span>
+      <button
+        type="button"
+        onClick={onDelete}
+        disabled={pending}
+        className="px-3 py-1.5 rounded bg-destructive text-destructive-foreground text-sm font-medium hover:opacity-90 disabled:opacity-60"
+      >
+        {pending ? "Moving to Trash…" : "Move to Trash"}
+      </button>
+      <button
+        type="button"
+        onClick={onClear}
+        disabled={pending}
+        className="text-muted-foreground hover:text-foreground text-lg leading-none disabled:opacity-60 px-1"
+        aria-label="Clear selection"
+      >
+        ×
+      </button>
+    </div>
   );
 }
 

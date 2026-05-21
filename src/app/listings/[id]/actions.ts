@@ -2,7 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { comments, listings, reactions } from "@/db/schema";
 import { isOrgAdmin } from "@/lib/auth/roles";
@@ -58,6 +58,36 @@ export async function deleteListingAction(listingId: string): Promise<void> {
       updatedAt: new Date(),
     })
     .where(and(eq(listings.id, listingId), scope));
+
+  revalidatePath("/");
+  revalidatePath("/listings/deleted");
+}
+
+export async function bulkDeleteListingsAction(
+  listingIds: string[],
+): Promise<void> {
+  if (listingIds.length === 0) return;
+  const { userId, orgId } = await auth();
+  if (!userId) return;
+
+  const scope = listingScope({ userId, orgId });
+  if (!scope) return;
+
+  const isAdmin = await isOrgAdmin();
+  const now = new Date();
+
+  const where = isAdmin
+    ? and(inArray(listings.id, listingIds), scope)
+    : and(
+        inArray(listings.id, listingIds),
+        scope,
+        eq(listings.ownerClerkUserId, userId),
+      );
+
+  await db
+    .update(listings)
+    .set({ deletedAt: now, priority: null, updatedAt: now })
+    .where(where);
 
   revalidatePath("/");
   revalidatePath("/listings/deleted");

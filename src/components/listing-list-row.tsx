@@ -48,6 +48,8 @@ export type ListingListRowProps = {
   listingLat?: number | null;
   listingLng?: number | null;
   selected?: boolean;
+  checked?: boolean;
+  onToggleCheck?: () => void;
 };
 
 export function ListingListRow({
@@ -71,6 +73,8 @@ export function ListingListRow({
   listingLat,
   listingLng,
   selected,
+  checked,
+  onToggleCheck,
 }: ListingListRowProps) {
   const [open, setOpen] = useState(false);
 
@@ -84,6 +88,15 @@ export function ListingListRow({
       }
     >
       <div className="flex items-center gap-4 px-3 py-2 hover:bg-muted/40 transition-colors">
+        {onToggleCheck != null ? (
+          <input
+            type="checkbox"
+            checked={checked ?? false}
+            onChange={onToggleCheck}
+            className="w-4 h-4 cursor-pointer shrink-0"
+            aria-label="Select listing"
+          />
+        ) : null}
         <div className="flex-1 min-w-0">
           <div className="flex items-start gap-2">
             <Link
