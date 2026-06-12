@@ -15,6 +15,7 @@ type Props = {
   bathrooms: string | null;
   priceUsd: number | null;
   neighborhood: string | null;
+  availability: string;
   coverUrl: string | null;
   deletedAt: string;
   checked?: boolean;
@@ -43,6 +44,7 @@ export function TrashRow({
   bathrooms,
   priceUsd,
   neighborhood,
+  availability,
   coverUrl,
   deletedAt,
   checked,
@@ -99,12 +101,15 @@ export function TrashRow({
         ) : null}
       </div>
       <div className="flex-1 min-w-0">
-        <Link
-          href={`/listings/${listingId}`}
-          className="font-medium hover:underline block truncate"
-        >
-          {title}
-        </Link>
+        <div className="flex items-start gap-2">
+          <Link
+            href={`/listings/${listingId}`}
+            className="font-medium hover:underline block truncate flex-1 min-w-0"
+          >
+            {title}
+          </Link>
+          <AvailabilityBadge availability={availability} />
+        </div>
         {address && address !== title ? (
           <p className="text-xs text-muted-foreground truncate">{address}</p>
         ) : null}
@@ -147,4 +152,22 @@ export function TrashRow({
       </div>
     </li>
   );
+}
+
+function AvailabilityBadge({ availability }: { availability: string }) {
+  if (availability === "available") {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-medium uppercase tracking-wide shrink-0">
+        Available
+      </span>
+    );
+  }
+  if (availability === "unavailable") {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/30 text-[10px] font-medium uppercase tracking-wide shrink-0">
+        Unavailable
+      </span>
+    );
+  }
+  return null;
 }

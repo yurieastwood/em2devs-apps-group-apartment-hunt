@@ -53,6 +53,7 @@ export default async function DeletedListingsPage() {
       bathrooms: r.bathrooms,
       priceUsd: r.priceUsd,
       neighborhood: r.neighborhood,
+      availability: r.availability,
       deletedAt: (r.deletedAt as Date).toISOString(),
       coverUrl: coverByListing.has(r.id)
         ? await urlFor(coverByListing.get(r.id) as string)

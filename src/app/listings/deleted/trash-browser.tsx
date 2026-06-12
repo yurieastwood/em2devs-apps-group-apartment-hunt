@@ -12,6 +12,7 @@ type TrashItem = {
   bathrooms: string | null;
   priceUsd: number | null;
   neighborhood: string | null;
+  availability: string;
   coverUrl: string | null;
   deletedAt: string;
 };
