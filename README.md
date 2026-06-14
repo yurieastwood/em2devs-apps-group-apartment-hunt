@@ -1,36 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Apartment Hunt
 
-## Getting Started
+Private, collaborative apartment-hunting web app. Families and teams share a workspace, import rental listings from Zillow, Apartments.com, and ApartmentList via URL, then jointly analyze, comment on, and prioritize them. Enriched with nearby schools, transit times to user-defined points of interest, and a per-listing safety score from Chicago crime data.
 
-First, run the development server:
+## Quick start
 
 ```bash
+npm install
+cp .env.example .env.local   # then fill in the values
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open <http://localhost:3000>.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Required env vars (see [AGENTS.md](./AGENTS.md#environment-variables) for the full table and optional vars):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `DATABASE_URL` — Neon Postgres
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` — Clerk auth
+- `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` — Cloudflare R2 photo storage
+- `GOOGLE_MAPS_SERVER_KEY`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` — Maps + Distance Matrix
+- `CRON_SECRET`, `HEALTH_AUTH_TOKEN` — Bearer tokens for `/api/cron/*` and `/api/health/*`
 
-## Learn More
+## Database
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run db:generate    # after editing src/db/schema.ts
+npm run db:migrate     # apply migrations
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## More
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- [AGENTS.md](./AGENTS.md) — architecture, conventions, scraping, safety scoring, multi-tenancy model. Read this before making changes.
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[AGPL-3.0-or-later](./LICENSE).
