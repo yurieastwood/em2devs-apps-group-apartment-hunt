@@ -19,6 +19,13 @@ import {
 const ZPID_RE = /\/(\d+)_zpid\//;
 const BUILDING_URL_RE = /\/apartments\/[^/]+\/[^/]+\/([a-zA-Z0-9]+)\/?/;
 
+// Building pages return HTTP 200 even when a property has no rentable units,
+// rendering "There are currently no available units for <address> on Zillow".
+// Building JSON carries no per-building homeStatus, so this message is the
+// only reliable unavailability signal — mirroring the HTML fallbacks the
+// apartments.com and apartmentlist parsers already use.
+const NO_UNITS_RE = /currently no available units/i;
+
 function extractNextData(html: string): Json {
   const m = html.match(
     /<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/,
@@ -115,9 +122,9 @@ function extractDistrict(
 //   RECENTLY_SOLD / OFF_MARKET / PENDING / NOT_FOR_SALE /
 //   LOST_FORECLOSURE / AUCTION are documented enum values that also
 //   represent unavailable.
-function extractAvailability(property: Json): Availability {
+function extractAvailability(property: Json, html: string): Availability {
   const status = asString(get(property, "homeStatus"));
-  if (!status) return "unknown";
+  if (!status) return NO_UNITS_RE.test(html) ? "unavailable" : "unknown";
   const s = status.toUpperCase();
   if (
     s === "FOR_RENT" ||
@@ -139,6 +146,18 @@ function extractAvailability(property: Json): Availability {
   ) {
     return "unavailable";
   }
+  return "unknown";
+}
+
+// Building pages have no homeStatus field. Availability is derived from the
+// explicit "no available units" message (definitive when present) and, absent
+// that, whether any floor plans/units were parsed off the page.
+function extractBuildingAvailability(
+  html: string,
+  unitCount: number,
+): Availability {
+  if (NO_UNITS_RE.test(html)) return "unavailable";
+  if (unitCount > 0) return "available";
   return "unknown";
 }
 
@@ -343,7 +362,7 @@ function parseZillowBuilding(
     // Building data doesn't expose a confirmed district field in our samples;
     // leave null until we add a Places-API fallback.
     district: null,
-    availability: "available",
+    availability: extractBuildingAvailability(html, units.length),
     units: units.length > 0 ? units : null,
     photos: extractBuildingPhotos(building),
     schools: extractSchools(building),
@@ -395,7 +414,7 @@ export function parseZillow(sourceUrl: string, html: string): ParsedListing {
     description: asString(get(property, "description")),
     neighborhood: extractNeighborhood(property),
     district: extractDistrict(property, extractNeighborhood(property)),
-    availability: extractAvailability(property),
+    availability: extractAvailability(property, html),
     units: null,
     photos: extractPhotos(property),
     schools: extractSchools(property),
