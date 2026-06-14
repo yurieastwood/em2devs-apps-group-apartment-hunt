@@ -17,6 +17,7 @@ import { RefreshListingButton } from "@/components/refresh-listing-button";
 import { ListingChangesLog } from "@/components/listing-changes-log";
 import { ListingSafetySection } from "@/components/listing-safety-section";
 import { ListingUnitsSection } from "@/components/listing-units-section";
+import { AvailabilityBadge } from "@/components/availability-badge";
 import { getHome } from "@/lib/home-settings";
 import { getPois } from "@/lib/points-of-interest";
 
@@ -150,24 +151,6 @@ function fmtLastChecked(d: Date | null): string {
   })}`;
 }
 
-function AvailabilityBadge({ value }: { value: string }) {
-  if (value === "unavailable") {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/30 text-xs font-medium">
-        Unavailable
-      </span>
-    );
-  }
-  if (value === "available") {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-xs font-medium">
-        Available
-      </span>
-    );
-  }
-  return null;
-}
-
 function PhotoErrorsSection({ raw }: { raw: unknown }) {
   if (!raw || typeof raw !== "object") return null;
   const errs = (raw as { photoErrors?: { url: string; reason: string }[] })
@@ -296,7 +279,7 @@ export default async function ListingDetailPage({
               current={listing.priority}
             />
           </span>
-          <AvailabilityBadge value={listing.availability} />
+          <AvailabilityBadge availability={listing.availability} />
           <span className="text-xs">{fmtLastChecked(listing.lastCheckedAt)}</span>
           <RefreshListingButton listingId={listing.id} />
         </div>

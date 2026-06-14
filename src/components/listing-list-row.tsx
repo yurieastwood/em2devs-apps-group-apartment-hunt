@@ -11,6 +11,7 @@ import {
   googleMapsTransitDirectionsUrl,
 } from "@/lib/transit-format";
 import { labelChipClasses } from "@/lib/label-color";
+import { AvailabilityBadge } from "./availability-badge";
 
 export type ListingListRowPoi = {
   poiId: string;
@@ -113,9 +114,7 @@ export function ListingListRow({
               ) : null}
             </Link>
             {availability === "unavailable" ? (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/30 text-[10px] font-medium uppercase tracking-wide shrink-0">
-                Unavailable
-              </span>
+              <AvailabilityBadge availability={availability} size="compact" />
             ) : null}
           </div>
           <p className="text-sm text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">

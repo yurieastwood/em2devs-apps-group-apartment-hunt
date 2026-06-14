@@ -6,6 +6,7 @@ import {
   permanentlyDeleteListingAction,
   restoreListingAction,
 } from "@/lib/listings/trash-actions";
+import { AvailabilityBadge } from "@/components/availability-badge";
 
 type Props = {
   listingId: string;
@@ -108,7 +109,7 @@ export function TrashRow({
           >
             {title}
           </Link>
-          <AvailabilityBadge availability={availability} />
+          <AvailabilityBadge availability={availability} size="compact" />
         </div>
         {address && address !== title ? (
           <p className="text-xs text-muted-foreground truncate">{address}</p>
@@ -152,22 +153,4 @@ export function TrashRow({
       </div>
     </li>
   );
-}
-
-function AvailabilityBadge({ availability }: { availability: string }) {
-  if (availability === "available") {
-    return (
-      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-medium uppercase tracking-wide shrink-0">
-        Available
-      </span>
-    );
-  }
-  if (availability === "unavailable") {
-    return (
-      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/30 text-[10px] font-medium uppercase tracking-wide shrink-0">
-        Unavailable
-      </span>
-    );
-  }
-  return null;
 }
