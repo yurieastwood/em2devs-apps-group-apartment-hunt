@@ -1199,8 +1199,7 @@ function TableView({
             <th className="px-3 py-2 text-left font-medium">P</th>
             <th className="px-3 py-2 text-left font-medium">Photo</th>
             <th className="px-3 py-2 text-left font-medium">Address</th>
-            <th className="px-3 py-2 text-left font-medium">Neighborhood</th>
-            <th className="px-3 py-2 text-left font-medium">District</th>
+            <th className="px-3 py-2 text-left font-medium">Area</th>
             <th className="px-3 py-2 text-right font-medium">BR</th>
             <th className="px-3 py-2 text-right font-medium">BA</th>
             <th className="px-3 py-2 text-right font-medium">Sqft</th>
@@ -1309,11 +1308,13 @@ function TableRow({
           ) : null}
         </Link>
       </td>
-      <td className="px-3 py-2 text-muted-foreground text-xs whitespace-nowrap">
-        {l.neighborhood ?? "—"}
-      </td>
-      <td className="px-3 py-2 text-muted-foreground text-xs whitespace-nowrap">
-        {l.district ?? "—"}
+      <td className="px-3 py-2 text-xs whitespace-nowrap">
+        <div className="flex flex-col">
+          <span className="text-muted-foreground">{l.neighborhood ?? "—"}</span>
+          {l.district ? (
+            <span className="text-muted-foreground/70">{l.district}</span>
+          ) : null}
+        </div>
       </td>
       <td className="px-3 py-2 text-right tabular-nums">
         {beds != null ? beds : "—"}
