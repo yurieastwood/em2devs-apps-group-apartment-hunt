@@ -26,6 +26,7 @@ import { ListingLabelsSection } from "@/components/listing-labels";
 import { isOrgAdmin } from "@/lib/auth/roles";
 import { userCanAccessListing } from "@/lib/listings/access";
 import { isManualListing } from "@/lib/listings/create-listing-manually";
+import { findPossibleDuplicates } from "@/lib/listings/duplicates";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -204,6 +205,25 @@ export default async function ListingDetailPage({
   const canDelete = !listing.deletedAt && (isAdmin || isOwner);
   const isManual = isManualListing(listing.sourceHost);
 
+  let possibleDuplicates: Awaited<
+    ReturnType<typeof findPossibleDuplicates>
+  > = [];
+  if (!listing.deletedAt) {
+    try {
+      possibleDuplicates = await findPossibleDuplicates(
+        { userId, orgId },
+        {
+          id: listing.id,
+          latitude: listing.latitude ? parseFloat(listing.latitude) : null,
+          longitude: listing.longitude ? parseFloat(listing.longitude) : null,
+          address: listing.address,
+        },
+      );
+    } catch (err) {
+      console.error("possible-duplicate check failed:", err);
+    }
+  }
+
   const userPois = userId ? await getPois({ userId, orgId }) : [];
 
   const listingHasCoords = !!(listing.latitude && listing.longitude);
@@ -301,6 +321,30 @@ export default async function ListingDetailPage({
           )}
         </div>
       </header>
+
+      {possibleDuplicates.length > 0 ? (
+        <div className="mb-6 rounded border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+          <p className="font-medium text-amber-700 dark:text-amber-400">
+            ⚠️ Possible duplicate{possibleDuplicates.length === 1 ? "" : "s"} —
+            you may already have this place:
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            {possibleDuplicates.map((d) => (
+              <li key={d.id}>
+                <Link
+                  href={`/listings/${d.id}`}
+                  className="text-foreground hover:underline"
+                >
+                  {d.label}
+                </Link>{" "}
+                <span className="text-xs text-muted-foreground">
+                  ({d.reason === "address" ? "same address" : "same location"})
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <ul className="flex flex-wrap gap-x-6 gap-y-2 mb-6 text-sm text-muted-foreground">
         {listing.bedrooms ? (
