@@ -1,10 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Show } from "@clerk/nextjs";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AppHeader } from "@/components/app-header";
 import { ThemedClerkProvider } from "@/components/themed-clerk-provider";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -20,6 +21,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Apartment Hunt",
   description: "Share apartment listings with family during a lease hunt.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Apt Hunt",
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
   robots: {
     index: false,
     follow: false,
@@ -30,6 +39,10 @@ export const metadata: Metadata = {
       noimageindex: true,
     },
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#2563eb",
 };
 
 export default function RootLayout({
@@ -48,6 +61,7 @@ export default function RootLayout({
             <AppHeader />
           </Show>
           {children}
+          <ServiceWorkerRegister />
           <Analytics />
           <SpeedInsights />
         </body>
