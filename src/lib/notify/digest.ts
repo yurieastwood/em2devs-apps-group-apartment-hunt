@@ -1,6 +1,7 @@
 import { and, asc, eq, gte, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import { listingChanges, listings } from "@/db/schema";
+import type { HealthIssue } from "./health";
 
 export const DIGEST_WINDOW_HOURS = 24;
 
@@ -109,10 +110,14 @@ function fmtChange(c: DigestChange): string {
   return `${c.oldValue ?? "—"} → ${c.newValue ?? "—"}`;
 }
 
+const MAX_ISSUES_IN_MESSAGE = 15;
+
 // Plain-text summary shared across channels (Telegram and WhatsApp both render
-// plain text fine). appUrl, when set, is appended as a link back to the app.
+// plain text fine). Includes the change digest plus a scrape-health section
+// flagging listings that failed to refresh. appUrl, when set, links back.
 export function formatDigestText(
   digest: DailyDigest,
+  issues: HealthIssue[],
   appUrl?: string | null,
 ): string {
   const lines: string[] = [
@@ -133,6 +138,22 @@ export function formatDigestText(
   const overflow = digest.listings.length - shown.length;
   if (overflow > 0) {
     lines.push("", `…and ${overflow} more listing${overflow === 1 ? "" : "s"}`);
+  }
+
+  if (issues.length > 0) {
+    lines.push(
+      "",
+      `⚠️ ${issues.length} listing${
+        issues.length === 1 ? "" : "s"
+      } failed to refresh:`,
+    );
+    for (const i of issues.slice(0, MAX_ISSUES_IN_MESSAGE)) {
+      lines.push(`   • ${i.label}: ${i.error}`);
+    }
+    const issueOverflow = issues.length - MAX_ISSUES_IN_MESSAGE;
+    if (issueOverflow > 0) {
+      lines.push(`   …and ${issueOverflow} more`);
+    }
   }
 
   if (appUrl) {

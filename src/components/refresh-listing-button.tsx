@@ -28,6 +28,8 @@ export function RefreshListingButton({
         setMessage(`Fetch failed (HTTP ${o.status})`);
       } else if (o.kind === "unsupported_host") {
         setMessage(`Unsupported host: ${o.host}`);
+      } else if (o.kind === "parse_empty") {
+        setMessage("Couldn't read the page (parser may be stale)");
       } else {
         setMessage("Listing not found");
       }

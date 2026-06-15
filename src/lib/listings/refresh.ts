@@ -90,7 +90,8 @@ export type RefreshOutcome =
   | { kind: "ok"; changes: number; listingId: string }
   | { kind: "not_found" }
   | { kind: "unsupported_host"; host: string }
-  | { kind: "fetch_failed"; status: number; triedProfiles: string[] };
+  | { kind: "fetch_failed"; status: number; triedProfiles: string[] }
+  | { kind: "parse_empty"; listingId: string };
 
 export type RefreshChange = {
   field: "price" | "availability" | "safetyScore";
@@ -198,6 +199,26 @@ export async function refreshListing(
 
   const parsed = parser(current.sourceUrl, fetched.html);
   const headline = computeHeadline(current, parsed);
+
+  // A 200 response we can extract nothing meaningful from almost always means
+  // the site changed its markup and the parser is now stale (or we hit a soft
+  // anti-bot page). Don't overwrite good data with the empty parse — record a
+  // health flag for the digest and bail.
+  if (
+    parsed.address == null &&
+    parsed.title == null &&
+    headline.price == null
+  ) {
+    await db
+      .update(listings)
+      .set({
+        lastCheckedAt: now,
+        lastCheckError:
+          "empty parse (no title/address/price) — parser may be stale",
+      })
+      .where(eq(listings.id, listingId));
+    return { kind: "parse_empty", listingId };
+  }
 
   const { neighborhood, district } = await resolveLocale({
     parsedNeighborhood: parsed.neighborhood,

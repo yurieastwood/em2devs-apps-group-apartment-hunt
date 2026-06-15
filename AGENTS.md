@@ -116,7 +116,8 @@ Drizzle Kit drives migrations.
 - Per-site parsers in `src/lib/extract/parsers/{zillow,apartments,apartmentlist,fultongrace}.ts`. Sites change HTML often — when one breaks, fix the parser and add a regression scrape against the saved raw HTML.
 - Refresh runs nightly via Vercel cron: `vercel.json` schedules `0 6 * * *` against `/api/cron/refresh-listings`. The endpoint requires `Authorization: Bearer $CRON_SECRET` (constant-time compared).
 - Refreshes diff incoming fields against current values and write deltas to `listingChanges`.
-- After the refresh, the cron sends a daily digest of the last 24h of `listingChanges` to any configured channel (Telegram, WhatsApp via Twilio) — see `src/lib/notify/`. It's a single shared digest (not per-org/owner), skipped when there are no changes, and failure-isolated so a notification error never fails the refresh.
+- After the refresh, the cron sends a daily digest to any configured channel (Telegram, WhatsApp via Twilio) — see `src/lib/notify/`. It combines the last 24h of `listingChanges` with a **scrape-health** section listing rows whose latest refresh left a `lastCheckError` (HTTP/anti-bot failures, plus the "empty parse" stale-parser flag). It's a single shared digest (not per-org/owner), sent only when there are changes or health issues, and failure-isolated so a notification error never fails the refresh.
+- A 200 response the parser extracts nothing from (no title/address/price) is treated as a stale-parser signal (`parse_empty`): the refresh records a `lastCheckError` and does **not** overwrite the stored data with the empty parse.
 
 # Safety scoring
 

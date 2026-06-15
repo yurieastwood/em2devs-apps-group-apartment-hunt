@@ -1,4 +1,5 @@
 import { buildDailyDigest, formatDigestText } from "./digest";
+import { buildScrapeHealth } from "./health";
 
 // Per-channel body caps. Telegram allows 4096; WhatsApp ~1600.
 const TELEGRAM_MAX = 4096;
@@ -116,18 +117,32 @@ async function sendWhatsApp(text: string): Promise<ChannelResult> {
 }
 
 export type DigestNotifyResult =
-  | { notified: false; reason: "no_changes" }
-  | { notified: true; totalChanges: number; channels: ChannelResult[] };
+  | { notified: false; reason: "nothing_to_report" }
+  | {
+      notified: true;
+      totalChanges: number;
+      issues: number;
+      channels: ChannelResult[];
+    };
 
-// Build the last-24h digest and push it to every configured channel. Never
-// throws — channel failures are captured per-channel so the caller (cron) is
-// unaffected.
+// Build the last-24h change digest plus scrape-health issues and push them to
+// every configured channel. Sends when there are changes OR refresh failures
+// to report. Never throws — channel failures are captured per-channel so the
+// caller (cron) is unaffected.
 export async function notifyDailyDigest(): Promise<DigestNotifyResult> {
-  const digest = await buildDailyDigest();
-  if (digest.totalChanges === 0) {
-    return { notified: false, reason: "no_changes" };
+  const [digest, issues] = await Promise.all([
+    buildDailyDigest(),
+    buildScrapeHealth(),
+  ]);
+  if (digest.totalChanges === 0 && issues.length === 0) {
+    return { notified: false, reason: "nothing_to_report" };
   }
-  const text = formatDigestText(digest, process.env.APP_BASE_URL);
+  const text = formatDigestText(digest, issues, process.env.APP_BASE_URL);
   const channels = await Promise.all([sendTelegram(text), sendWhatsApp(text)]);
-  return { notified: true, totalChanges: digest.totalChanges, channels };
+  return {
+    notified: true,
+    totalChanges: digest.totalChanges,
+    issues: issues.length,
+    channels,
+  };
 }
