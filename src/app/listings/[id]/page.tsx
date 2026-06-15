@@ -207,6 +207,29 @@ export default async function ListingDetailPage({
   const canManagePhotos = canDelete;
   const isManual = isManualListing(listing.sourceHost);
 
+  // Pre-built WhatsApp share message. Opens the sender's own WhatsApp via the
+  // click-to-chat link; they pick the recipient. Include the public source URL
+  // for scraped listings so the recipient can open it (manual listings have no
+  // shareable URL).
+  const shareLines: string[] = [listing.title ?? listing.address ?? "Listing"];
+  const shareStats: string[] = [];
+  if (listing.priceUsd != null) {
+    shareStats.push(`$${listing.priceUsd.toLocaleString("en-US")}/mo`);
+  }
+  if (listing.bedrooms) shareStats.push(`${listing.bedrooms} bd`);
+  if (listing.bathrooms) shareStats.push(`${listing.bathrooms} ba`);
+  if (listing.squareFeet != null) {
+    shareStats.push(`${listing.squareFeet.toLocaleString("en-US")} sqft`);
+  }
+  if (shareStats.length > 0) shareLines.push(shareStats.join(" · "));
+  if (listing.address && listing.address !== shareLines[0]) {
+    shareLines.push(`📍 ${listing.address}`);
+  }
+  if (!isManual) shareLines.push(listing.sourceUrl);
+  const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(
+    shareLines.join("\n"),
+  )}`;
+
   let possibleDuplicates: Awaited<
     ReturnType<typeof findPossibleDuplicates>
   > = [];
@@ -436,6 +459,14 @@ export default async function ListingDetailPage({
             View original listing on {listing.sourceHost} →
           </a>
         )}
+        <a
+          href={whatsappShareUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-emerald-700 dark:text-emerald-400 hover:underline"
+        >
+          Share on WhatsApp
+        </a>
         {canEdit ? (
           <Link
             href={`/listings/${listing.id}/edit`}
