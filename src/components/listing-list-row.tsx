@@ -46,6 +46,7 @@ export type ListingListRowProps = {
   availability?: string;
   contactStatus?: string | null;
   commentCount?: number;
+  possibleDuplicate?: boolean;
   neighborhood?: string | null;
   district?: string | null;
   safetyScore?: number | null;
@@ -82,6 +83,7 @@ export function ListingListRow({
   availability,
   contactStatus,
   commentCount,
+  possibleDuplicate,
   neighborhood,
   district,
   safetyScore,
@@ -122,6 +124,14 @@ export function ListingListRow({
                 </span>
               ) : null}
             </Link>
+            {possibleDuplicate ? (
+              <span
+                title="Possible duplicate of another listing"
+                className="inline-flex items-center px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[10px] font-medium uppercase tracking-wide shrink-0"
+              >
+                Dup?
+              </span>
+            ) : null}
             {availability === "unavailable" ? (
               <AvailabilityBadge availability={availability} size="compact" />
             ) : null}

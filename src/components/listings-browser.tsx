@@ -58,6 +58,7 @@ export type HomeListingItem = {
   availability: string;
   contactStatus: string | null;
   commentCount: number;
+  possibleDuplicate: boolean;
   latitude: number | null;
   longitude: number | null;
   coverUrl: string | null;
@@ -922,6 +923,17 @@ function SafetyBadge({ score }: { score: number | null }) {
   );
 }
 
+function DuplicateBadge() {
+  return (
+    <span
+      title="Possible duplicate of another listing"
+      className="inline-flex items-center px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[10px] font-medium uppercase tracking-wide shrink-0"
+    >
+      Dup?
+    </span>
+  );
+}
+
 function UnavailableBadge({ availability }: { availability: string }) {
   if (availability !== "unavailable") return null;
   return (
@@ -1045,7 +1057,10 @@ function CardsView({
                     </p>
                   ) : null}
                 </div>
-                <UnavailableBadge availability={l.availability} />
+                <div className="flex items-center gap-1 shrink-0">
+                  {l.possibleDuplicate ? <DuplicateBadge /> : null}
+                  <UnavailableBadge availability={l.availability} />
+                </div>
               </div>
               {fmtLocale(l.neighborhood, l.district) ? (
                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -1184,6 +1199,7 @@ function ListView({
           availability={l.availability}
           contactStatus={l.contactStatus}
           commentCount={l.commentCount}
+          possibleDuplicate={l.possibleDuplicate}
           neighborhood={l.neighborhood}
           district={l.district}
           safetyScore={l.safetyScore}
@@ -1328,6 +1344,11 @@ function TableRow({
             </span>
           ) : null}
         </Link>
+        {l.possibleDuplicate ? (
+          <div className="mt-1">
+            <DuplicateBadge />
+          </div>
+        ) : null}
       </td>
       <td className="px-3 py-2 text-xs whitespace-nowrap">
         <div className="flex flex-col">
