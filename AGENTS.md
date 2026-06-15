@@ -32,6 +32,7 @@ License: AGPL-3.0-or-later. The app sets `noindex/nofollow` — do not introduce
 | Dev server | `npm run dev` |
 | Production build | `npm run build` |
 | Start prod | `npm start` |
+| Preview (prod build locally) | `npm run preview` |
 | Lint | `npm run lint` |
 | Type-check | `npx tsc --noEmit` |
 | Generate migration | `npm run db:generate` |
@@ -144,5 +145,8 @@ There is no test runner configured (no `npm test` script, no `*.test.*` / `*.spe
 - `npx tsc --noEmit` for type safety
 - `npm run lint`
 - Manual exercise of the dev server for UI changes
+- `npm run preview` (`next build && next start`) to catch prod-only build/bundle issues that `next dev` misses
 
 If you add a test framework, wire it into `package.json` scripts and update this file.
+
+Local setup (Neon branch, Clerk dev instance, data re-scoping) is documented in `docs/local-dev.md`.
