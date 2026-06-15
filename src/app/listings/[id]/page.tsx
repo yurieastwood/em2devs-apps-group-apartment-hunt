@@ -29,6 +29,7 @@ import { userCanAccessListing } from "@/lib/listings/access";
 import { isManualListing } from "@/lib/listings/manual-source";
 import { findPossibleDuplicates } from "@/lib/listings/duplicates";
 import { buildWhatsAppShareUrl } from "@/lib/listings/whatsapp-share";
+import { WhatsAppShareLink } from "@/components/whatsapp-share-link";
 import { getAppOrigin } from "@/lib/request-origin";
 
 export const runtime = "nodejs";
@@ -445,14 +446,7 @@ export default async function ListingDetailPage({
             View original listing on {listing.sourceHost} →
           </a>
         )}
-        <a
-          href={whatsappShareUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-emerald-700 dark:text-emerald-400 hover:underline"
-        >
-          Share on WhatsApp
-        </a>
+        <WhatsAppShareLink url={whatsappShareUrl} />
         {canEdit ? (
           <Link
             href={`/listings/${listing.id}/edit`}
