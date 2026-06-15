@@ -6,6 +6,7 @@ import { ensureDistances, getPoiIdsInScope } from "../places/poi-distances";
 import { parseApartmentList } from "../extract/parsers/apartmentlist";
 import { parseApartments } from "../extract/parsers/apartments";
 import { parseZillow } from "../extract/parsers/zillow";
+import { parseFultongrace } from "../extract/parsers/fultongrace";
 import type { ParsedListing } from "../extract/types";
 import { normalizeListingUrl } from "../url-normalize";
 import { rehostListingPhotos } from "./rehost-photos";
@@ -18,6 +19,7 @@ const PARSERS: Record<string, Parser> = {
   "zillow.com": parseZillow,
   "apartments.com": parseApartments,
   "apartmentlist.com": parseApartmentList,
+  "fultongrace.com": parseFultongrace,
 };
 
 export type CreateListingError =

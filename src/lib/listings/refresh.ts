@@ -11,6 +11,7 @@ import { fetchListing } from "../extract/fetch-listing";
 import { parseApartmentList } from "../extract/parsers/apartmentlist";
 import { parseApartments } from "../extract/parsers/apartments";
 import { parseZillow } from "../extract/parsers/zillow";
+import { parseFultongrace } from "../extract/parsers/fultongrace";
 import type {
   Availability,
   ParsedListing,
@@ -80,6 +81,7 @@ const PARSERS: Record<string, Parser> = {
   "zillow.com": parseZillow,
   "apartments.com": parseApartments,
   "apartmentlist.com": parseApartmentList,
+  "fultongrace.com": parseFultongrace,
 };
 
 export type RefreshSource = "cron" | "manual";

@@ -6,7 +6,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Project
 
-Private, collaborative apartment-hunting web app. Families/teams share a workspace, import rental listings from Zillow, Apartments.com, and ApartmentList via URL, then jointly analyze, comment, and prioritize. Enrichment includes nearby schools (scraped from Apartments.com listing pages), transit times to user-defined points of interest, and a per-listing safety score from Chicago crime data.
+Private, collaborative apartment-hunting web app. Families/teams share a workspace, import rental listings from Zillow, Apartments.com, ApartmentList, and Fulton Grace via URL, then jointly analyze, comment, and prioritize. Enrichment includes nearby schools (scraped from Apartments.com listing pages), transit times to user-defined points of interest, and a per-listing safety score from Chicago crime data.
 
 License: AGPL-3.0-or-later. The app sets `noindex/nofollow` — do not introduce public/indexable surfaces.
 
@@ -48,7 +48,7 @@ License: AGPL-3.0-or-later. The app sets `noindex/nofollow` — do not introduce
 - `src/db/` — Drizzle `schema.ts` + Neon `client.ts`
 - `src/lib/` — Business logic
   - `auth/` — role helpers (`isOrgAdmin`)
-  - `extract/` — fetch + parse listings; `parsers/{zillow,apartments,apartmentlist}.ts`
+  - `extract/` — fetch + parse listings; `parsers/{zillow,apartments,apartmentlist,fultongrace}.ts`
   - `listings/` — listing lifecycle: create, refresh, trash, labels, priority, photo rehosting, access checks
   - `safety/` — Chicago crime scoring (`chicago.ts`)
   - `places/`, `storage/` — Google Places, R2 client
@@ -110,7 +110,7 @@ Drizzle Kit drives migrations.
 # Scraping & background work
 
 - Listings are fetched via `bin/curl-impersonate` with browser-profile rotation to evade bot detection (`src/lib/extract/fetch-listing.ts`).
-- Per-site parsers in `src/lib/extract/parsers/{zillow,apartments,apartmentlist}.ts`. Sites change HTML often — when one breaks, fix the parser and add a regression scrape against the saved raw HTML.
+- Per-site parsers in `src/lib/extract/parsers/{zillow,apartments,apartmentlist,fultongrace}.ts`. Sites change HTML often — when one breaks, fix the parser and add a regression scrape against the saved raw HTML.
 - Refresh runs nightly via Vercel cron: `vercel.json` schedules `0 6 * * *` against `/api/cron/refresh-listings`. The endpoint requires `Authorization: Bearer $CRON_SECRET` (constant-time compared).
 - Refreshes diff incoming fields against current values and write deltas to `listingChanges`.
 

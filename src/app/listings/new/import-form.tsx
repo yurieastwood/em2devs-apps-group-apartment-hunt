@@ -13,7 +13,7 @@ type RowStatus =
 type Row = { url: string; status: RowStatus };
 
 const SUPPORTED_HOST_RE =
-  /^(www\.)?(zillow\.com|apartments\.com|apartmentlist\.com)$/i;
+  /^(www\.)?(zillow\.com|apartments\.com|apartmentlist\.com|fultongrace\.com)$/i;
 const TRAILING_PUNCTUATION_RE = /[.,;)\]}]+$/;
 
 // Concurrency is per-host so one site can't get hammered by all workers at
@@ -126,7 +126,7 @@ export function ImportForm() {
           onChange={(e) => setText(e.target.value)}
           rows={10}
           disabled={running}
-          placeholder="Paste your Zillow, Apartments.com, or ApartmentList.com favorites here. Plain URLs or HTML both work."
+          placeholder="Paste your Zillow, Apartments.com, ApartmentList.com, or FultonGrace.com favorites here. Plain URLs or HTML both work."
           className="border border-border bg-input-background text-foreground rounded p-2 text-sm font-mono placeholder:text-muted-foreground"
         />
         <span className="text-xs text-muted-foreground">
