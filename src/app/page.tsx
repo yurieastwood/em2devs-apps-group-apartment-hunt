@@ -20,6 +20,7 @@ import {
   getLabelsForListings,
   listLabelsInScope,
 } from "@/lib/listings/labels";
+import { getCommentCounts } from "@/lib/listings/comments";
 import { ViewModeToggle } from "@/components/view-mode-toggle";
 import { type HomeMapProps } from "@/components/home-map";
 import { HomeSettingsForm } from "@/components/home-settings-form";
@@ -188,6 +189,8 @@ export default async function HomePage() {
   const nearestPkRatingMap = buildNearestPkRatingMap(schoolRows);
   const labelsByListing: Map<string, Label[]> =
     ids.length === 0 ? new Map() : await getLabelsForListings(ids);
+  const commentCounts: Map<string, number> =
+    ids.length === 0 ? new Map() : await getCommentCounts(ids);
 
   const poiInfoMap = new Map(
     userPois.map((p) => [
@@ -275,6 +278,7 @@ export default async function HomePage() {
       priority: l.priority,
       availability: l.availability,
       contactStatus: l.contactStatus,
+      commentCount: commentCounts.get(l.id) ?? 0,
       safetyScore: primarySafetyScore(readSafetyRaw(l.safetyBreakdown)),
       latitude: l.latitude ? parseFloat(l.latitude) : null,
       longitude: l.longitude ? parseFloat(l.longitude) : null,

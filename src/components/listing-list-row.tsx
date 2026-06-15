@@ -45,6 +45,7 @@ export type ListingListRowProps = {
   priority?: number | null;
   availability?: string;
   contactStatus?: string | null;
+  commentCount?: number;
   neighborhood?: string | null;
   district?: string | null;
   safetyScore?: number | null;
@@ -71,6 +72,7 @@ export function ListingListRow({
   priority,
   availability,
   contactStatus,
+  commentCount,
   neighborhood,
   district,
   safetyScore,
@@ -146,6 +148,11 @@ export function ListingListRow({
                 title={`Safety: ${safetyScore}/100. Compared to your home — 50 = same as home, higher = safer.`}
               >
                 🛡 {safetyScore}
+              </span>
+            ) : null}
+            {commentCount != null && commentCount > 0 ? (
+              <span title={`${commentCount} comment${commentCount === 1 ? "" : "s"}`}>
+                💬 {commentCount}
               </span>
             ) : null}
           </p>

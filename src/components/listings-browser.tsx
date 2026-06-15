@@ -47,6 +47,7 @@ export type HomeListingItem = {
   safetyScore: number | null;
   availability: string;
   contactStatus: string | null;
+  commentCount: number;
   latitude: number | null;
   longitude: number | null;
   coverUrl: string | null;
@@ -870,6 +871,18 @@ function ContactStatusFilterGroup({
   );
 }
 
+function CommentCount({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 text-xs text-muted-foreground"
+      title={`${count} comment${count === 1 ? "" : "s"}`}
+    >
+      💬 {count}
+    </span>
+  );
+}
+
 function safetyClass(score: number): string {
   if (score >= 80) return "text-emerald-700 dark:text-emerald-400";
   if (score >= 60) return "text-lime-700 dark:text-lime-400";
@@ -1028,6 +1041,7 @@ function CardsView({
                   </span>
                 ) : null}
                 <SafetyBadge score={l.safetyScore} />
+                <CommentCount count={l.commentCount} />
               </p>
               {l.poiDistances.length > 0 ? (
                 <p className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
@@ -1141,6 +1155,7 @@ function ListView({
           priority={l.priority}
           availability={l.availability}
           contactStatus={l.contactStatus}
+          commentCount={l.commentCount}
           neighborhood={l.neighborhood}
           district={l.district}
           safetyScore={l.safetyScore}
@@ -1194,6 +1209,9 @@ function TableView({
             <th className="px-3 py-2 text-right font-medium">Safety</th>
             <th className="px-3 py-2 text-left font-medium">Transit</th>
             <th className="px-3 py-2 text-left font-medium">Labels</th>
+            <th className="px-3 py-2 text-right font-medium" title="Comments">
+              💬
+            </th>
             <th className="px-3 py-2 text-left font-medium">Status</th>
             <th className="px-3 py-2 text-right font-medium">Actions</th>
           </tr>
@@ -1372,6 +1390,9 @@ function TableRow({
         ) : (
           <span className="text-muted-foreground">—</span>
         )}
+      </td>
+      <td className="px-3 py-2 text-right tabular-nums">
+        {l.commentCount > 0 ? l.commentCount : "—"}
       </td>
       <td className="px-3 py-2 whitespace-nowrap">
         <div className="flex flex-col items-start gap-1">
