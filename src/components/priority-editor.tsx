@@ -46,7 +46,6 @@ export function PriorityEditor({ listingId, current, className }: Props) {
         className ?? "inline-flex items-center gap-1 text-xs whitespace-nowrap"
       }
     >
-      <span className="text-muted-foreground">P</span>
       <input
         type="number"
         min={1}
