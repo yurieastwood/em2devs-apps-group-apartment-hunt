@@ -11,7 +11,11 @@
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:prod": "DRIZZLE_ENV_FILE=.env.production.local drizzle-kit migrate",
     "db:push": "drizzle-kit push",
+    "db:push:prod": "DRIZZLE_ENV_FILE=.env.production.local drizzle-kit push",
+    "db:baseline": "node scripts/baseline-migrations.mjs",
+    "db:baseline:prod": "DRIZZLE_ENV_FILE=.env.production.local node scripts/baseline-migrations.mjs",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

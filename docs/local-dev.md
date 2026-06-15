@@ -63,6 +63,47 @@ psql "$DATABASE_URL" -f scripts/rescope-local.sql   # fill in placeholders first
 > middleware resolution). **Reproduce prod-class issues with `npm run preview`
 > or a Vercel preview deployment**, not `npm run dev` alone.
 
+## Schema changes & propagating them to prod
+
+`.env.local` now points at the **dev branch**, so `npm run db:push` only touches
+dev. To keep prod from drifting (which causes runtime `column ... does not exist`
+500s) there are two mechanisms:
+
+### A. Explicit prod push (escape hatch / dev-branch syncing)
+Targets are explicit so you never hit the wrong DB:
+
+| Command | Target |
+|---------|--------|
+| `npm run db:push` / `db:migrate` / `db:baseline` | dev (`.env.local`) |
+| `npm run db:push:prod` / `db:migrate:prod` / `db:baseline:prod` | prod (`.env.production.local`) |
+
+Put the **prod** connection string in a gitignored **`.env.production.local`**
+(`DATABASE_URL=...`). Use `db:push:prod` for quick/emergency syncs.
+
+### B. Migrations on deploy (the normal path — no manual step)
+1. Edit `src/db/schema.ts`.
+2. `npm run db:generate` → review the SQL in `drizzle/`, commit it.
+3. `npm run db:migrate` applies it to dev; on deploy it's applied to prod
+   automatically (see build hook below). Migrations are forward-only, reviewed,
+   and tracked in `drizzle.__drizzle_migrations`, so prod can't silently drift.
+
+**One-time baseline (required before enabling the build hook).** This repo's
+prod/dev already have the schema, so the first migration (`0000`) must be marked
+applied, not re-run:
+1. `npm run db:generate` (already committed as `drizzle/0000_*`).
+2. Baseline **dev first** and verify:
+   ```
+   npm run db:baseline      # marks 0000 applied on the dev branch
+   npm run db:migrate       # should report "No migrations to apply"
+   ```
+3. Then baseline prod: `npm run db:baseline:prod`.
+4. **Enable auto-migrate on deploy:** set the build to run migrations first —
+   change `"build"` to `"drizzle-kit migrate && next build"` (or set Vercel's
+   Build Command to `npm run db:migrate && npm run build`). On Vercel,
+   `DATABASE_URL` is prod, so each deploy migrates prod before building.
+   *Do this only after step 3*, or the first deploy will try to recreate
+   existing tables and fail.
+
 ## When prod breaks but local doesn't
 
 1. Confirm the **Production** deployment is the commit you expect — a failed
