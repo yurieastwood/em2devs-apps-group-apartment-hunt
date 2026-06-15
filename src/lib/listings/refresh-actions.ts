@@ -12,6 +12,11 @@ import {
   refreshListingsBatch,
   type RefreshOutcome,
 } from "./refresh";
+import {
+  notifyDailyDigest,
+  sendTestNotification,
+  type ChannelResult,
+} from "../notify/send";
 
 export type RefreshActionResult =
   | { ok: true; outcome: RefreshOutcome }
@@ -43,7 +48,13 @@ export async function refreshListingAction(
 }
 
 export type RefreshAllActionResult =
-  | { ok: true; total: number; changed: number; failed: number }
+  | {
+      ok: true;
+      total: number;
+      changed: number;
+      failed: number;
+      notified: boolean;
+    }
   | { ok: false; reason: string };
 
 export async function refreshAllListingsAction(): Promise<RefreshAllActionResult> {
@@ -76,6 +87,36 @@ export async function refreshAllListingsAction(): Promise<RefreshAllActionResult
     }
   }
 
+  // Send the digest for this run's changes/health issues too (the scheduled
+  // cron isn't the only way changes happen). Failure-isolated.
+  let notified = false;
+  try {
+    const result = await notifyDailyDigest();
+    notified = result.notified;
+  } catch {
+    notified = false;
+  }
+
   revalidatePath("/");
-  return { ok: true, total: rows.length, changed, failed };
+  return { ok: true, total: rows.length, changed, failed, notified };
+}
+
+export type TestDigestResult =
+  | { ok: true; channels: ChannelResult[] }
+  | { ok: false; reason: string };
+
+export async function sendTestDigestAction(): Promise<TestDigestResult> {
+  const { userId } = await auth();
+  if (!userId) return { ok: false, reason: "Not signed in" };
+  if (!(await isOrgAdmin())) return { ok: false, reason: "Admins only" };
+
+  try {
+    const { channels } = await sendTestNotification();
+    return { ok: true, channels };
+  } catch (err) {
+    return {
+      ok: false,
+      reason: err instanceof Error ? err.message : String(err),
+    };
+  }
 }

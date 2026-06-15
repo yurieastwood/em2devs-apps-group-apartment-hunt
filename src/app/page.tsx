@@ -31,6 +31,7 @@ import {
   getRecentChanges,
 } from "@/components/recent-changes-banner";
 import { RefreshAllButton } from "@/components/refresh-all-button";
+import { TestDigestButton } from "@/components/test-digest-button";
 import {
   ListingsBrowser,
   type HomeListingItem,
@@ -336,6 +337,7 @@ export default async function HomePage() {
         <h1 className="text-2xl font-semibold">Listings</h1>
         <div className="flex items-center gap-3 flex-wrap">
           {isAdmin && ids.length > 0 ? <RefreshAllButton /> : null}
+          {isAdmin ? <TestDigestButton /> : null}
           <ViewModeToggle current={viewMode} />
           {isAdmin ? (
             <Link

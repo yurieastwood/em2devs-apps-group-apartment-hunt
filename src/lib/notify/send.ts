@@ -146,3 +146,25 @@ export async function notifyDailyDigest(): Promise<DigestNotifyResult> {
     channels,
   };
 }
+
+// On-demand delivery check for admins: ALWAYS sends a message (the current 24h
+// summary if there's anything, otherwise a plain "it works" line) so the
+// configured channels can be verified without waiting for a real change.
+export async function sendTestNotification(): Promise<{
+  channels: ChannelResult[];
+}> {
+  const [digest, issues] = await Promise.all([
+    buildDailyDigest(),
+    buildScrapeHealth(),
+  ]);
+  const hasContent = digest.totalChanges > 0 || issues.length > 0;
+  const text = hasContent
+    ? `🔔 Test digest — current 24h summary:\n\n${formatDigestText(
+        digest,
+        issues,
+        process.env.APP_BASE_URL,
+      )}`
+    : "🔔 Apartment Hunt test — notifications are working. No changes in the last 24h.";
+  const channels = await Promise.all([sendTelegram(text), sendWhatsApp(text)]);
+  return { channels };
+}
