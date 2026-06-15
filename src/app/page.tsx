@@ -274,6 +274,7 @@ export default async function HomePage() {
       priceUsd: l.priceUsd,
       priority: l.priority,
       availability: l.availability,
+      contactStatus: l.contactStatus,
       safetyScore: primarySafetyScore(readSafetyRaw(l.safetyBreakdown)),
       latitude: l.latitude ? parseFloat(l.latitude) : null,
       longitude: l.longitude ? parseFloat(l.longitude) : null,

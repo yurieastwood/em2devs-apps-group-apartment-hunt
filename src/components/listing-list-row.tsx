@@ -6,6 +6,7 @@ import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { DeleteListingButton } from "./delete-listing-button";
 import { PriorityEditor } from "./priority-editor";
+import { ContactStatusEditor } from "./contact-status-editor";
 import {
   fmtTransitDuration,
   googleMapsTransitDirectionsUrl,
@@ -43,6 +44,7 @@ export type ListingListRowProps = {
   labels?: ListingListRowLabel[];
   priority?: number | null;
   availability?: string;
+  contactStatus?: string | null;
   neighborhood?: string | null;
   district?: string | null;
   safetyScore?: number | null;
@@ -68,6 +70,7 @@ export function ListingListRow({
   labels,
   priority,
   availability,
+  contactStatus,
   neighborhood,
   district,
   safetyScore,
@@ -190,6 +193,11 @@ export function ListingListRow({
             key={`pri-${listingId}-${priority ?? "null"}`}
             listingId={listingId}
             current={priority ?? null}
+          />
+          <ContactStatusEditor
+            key={`cs-${listingId}-${contactStatus ?? "null"}`}
+            listingId={listingId}
+            current={contactStatus ?? null}
           />
           {coverUrl ? (
             <button

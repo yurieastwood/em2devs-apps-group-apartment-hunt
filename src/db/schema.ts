@@ -33,6 +33,7 @@ export const listings = pgTable(
     squareFeet: integer("square_feet"),
     priceUsd: integer("price_usd"),
     priority: integer("priority"),
+    contactStatus: text("contact_status"),
     description: text("description"),
     neighborhood: text("neighborhood"),
     district: text("district"),

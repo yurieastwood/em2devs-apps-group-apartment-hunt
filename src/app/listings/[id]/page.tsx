@@ -13,6 +13,7 @@ import { NearbySchools } from "./nearby-schools";
 import { ListingPoiDistances } from "@/components/listing-poi-distances";
 import { HomeMap } from "@/components/home-map";
 import { PriorityEditor } from "@/components/priority-editor";
+import { ContactStatusEditor } from "@/components/contact-status-editor";
 import { RefreshListingButton } from "@/components/refresh-listing-button";
 import { ListingChangesLog } from "@/components/listing-changes-log";
 import { ListingSafetySection } from "@/components/listing-safety-section";
@@ -277,6 +278,14 @@ export default async function ListingDetailPage({
               key={`pri-${listing.id}-${listing.priority ?? "null"}`}
               listingId={listing.id}
               current={listing.priority}
+            />
+          </span>
+          <span className="flex items-center gap-2">
+            <span>Status</span>
+            <ContactStatusEditor
+              key={`cs-${listing.id}-${listing.contactStatus ?? "null"}`}
+              listingId={listing.id}
+              current={listing.contactStatus}
             />
           </span>
           <AvailabilityBadge availability={listing.availability} />

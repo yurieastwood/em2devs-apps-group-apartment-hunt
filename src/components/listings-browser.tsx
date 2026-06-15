@@ -9,6 +9,8 @@ import { bulkDeleteListingsAction } from "@/app/listings/[id]/actions";
 import { HomeMap, type HomeMapProps } from "@/components/home-map";
 import { ListingListRow } from "@/components/listing-list-row";
 import { PriorityEditor } from "@/components/priority-editor";
+import { ContactStatusEditor } from "@/components/contact-status-editor";
+import { CONTACT_STATUSES } from "@/lib/listings/contact-status";
 import {
   fmtTransitDuration,
   googleMapsTransitDirectionsUrl,
@@ -44,6 +46,7 @@ export type HomeListingItem = {
   nearestPkRating: number | null;
   safetyScore: number | null;
   availability: string;
+  contactStatus: string | null;
   latitude: number | null;
   longitude: number | null;
   coverUrl: string | null;
@@ -236,6 +239,9 @@ export function ListingsBrowser({
     new Set(),
   );
   const [hideUnavailable, setHideUnavailable] = useState(false);
+  const [activeContactStatuses, setActiveContactStatuses] = useState<
+    Set<string>
+  >(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedListingId, setSelectedListingId] = useState<string | null>(
     null,
@@ -293,6 +299,14 @@ export function ListingsBrowser({
         if (!hit) return false;
       }
       if (hideUnavailable && l.availability === "unavailable") return false;
+      if (activeContactStatuses.size > 0) {
+        if (
+          !l.contactStatus ||
+          !activeContactStatuses.has(l.contactStatus)
+        ) {
+          return false;
+        }
+      }
       if (activeNeighborhoods.size > 0) {
         if (!l.neighborhood || !activeNeighborhoods.has(l.neighborhood)) {
           return false;
@@ -323,6 +337,7 @@ export function ListingsBrowser({
     activeNeighborhoods,
     activeDistricts,
     hideUnavailable,
+    activeContactStatuses,
     searchQuery,
   ]);
 
@@ -349,6 +364,15 @@ export function ListingsBrowser({
       const next = new Set(prev);
       if (next.has(name)) next.delete(name);
       else next.add(name);
+      return next;
+    });
+  }
+
+  function toggleContactStatus(value: string) {
+    setActiveContactStatuses((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
       return next;
     });
   }
@@ -548,6 +572,10 @@ export function ListingsBrowser({
             onToggle={toggleDistrict}
           />
         ) : null}
+        <ContactStatusFilterGroup
+          active={activeContactStatuses}
+          onToggle={toggleContactStatus}
+        />
         <button
           type="button"
           onClick={() => setHideUnavailable((v) => !v)}
@@ -808,6 +836,40 @@ function TextFilterGroup({
   );
 }
 
+function ContactStatusFilterGroup({
+  active,
+  onToggle,
+}: {
+  active: Set<string>;
+  onToggle: (value: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-muted-foreground">Status</span>
+      <div className="flex flex-wrap gap-1">
+        {CONTACT_STATUSES.map((s) => {
+          const on = active.has(s.value);
+          return (
+            <button
+              key={s.value}
+              type="button"
+              onClick={() => onToggle(s.value)}
+              aria-pressed={on}
+              className={`px-2 py-0.5 rounded border text-xs transition-opacity ${
+                on
+                  ? "bg-primary/15 border-primary text-foreground"
+                  : "border-border hover:bg-muted text-muted-foreground"
+              }`}
+            >
+              {s.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function safetyClass(score: number): string {
   if (score >= 80) return "text-emerald-700 dark:text-emerald-400";
   if (score >= 60) return "text-lime-700 dark:text-lime-400";
@@ -1019,6 +1081,11 @@ function CardsView({
                 listingId={l.id}
                 current={l.priority}
               />
+              <ContactStatusEditor
+                key={`cs-${l.id}-${l.contactStatus ?? "null"}`}
+                listingId={l.id}
+                current={l.contactStatus}
+              />
             </div>
             {l.canDelete ? (
               <DeleteListingButton
@@ -1073,6 +1140,7 @@ function ListView({
           labels={l.labels}
           priority={l.priority}
           availability={l.availability}
+          contactStatus={l.contactStatus}
           neighborhood={l.neighborhood}
           district={l.district}
           safetyScore={l.safetyScore}
@@ -1306,7 +1374,14 @@ function TableRow({
         )}
       </td>
       <td className="px-3 py-2 whitespace-nowrap">
-        <UnavailableBadge availability={l.availability} />
+        <div className="flex flex-col items-start gap-1">
+          <UnavailableBadge availability={l.availability} />
+          <ContactStatusEditor
+            key={`cs-${l.id}-${l.contactStatus ?? "null"}`}
+            listingId={l.id}
+            current={l.contactStatus}
+          />
+        </div>
       </td>
       <td className="px-3 py-2 text-right whitespace-nowrap">
         <div className="inline-flex flex-col items-end gap-1">
