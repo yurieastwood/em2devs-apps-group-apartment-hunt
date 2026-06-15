@@ -56,6 +56,58 @@ export async function geocodeAddress(
   return { lat, lng, displayName: r.display_name };
 }
 
+export type ReverseAddressResult = {
+  streetAddress: string | null;
+  city: string | null;
+  state: string | null;
+  zipCode: string | null;
+  displayName: string | null;
+};
+
+// Reverse geocode a coordinate to street-level address components, for the
+// "use my current location" flow on the manual-add form.
+export async function reverseGeocodeToAddress(
+  lat: number,
+  lng: number,
+): Promise<ReverseAddressResult | null> {
+  const url = new URL("https://nominatim.openstreetmap.org/reverse");
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("lat", lat.toString());
+  url.searchParams.set("lon", lng.toString());
+  try {
+    const res = await throttledNominatim(() =>
+      fetch(url, { headers: { "User-Agent": NOMINATIM_USER_AGENT } }),
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      display_name?: string;
+      address?: Record<string, unknown>;
+    };
+    const a = data.address ?? {};
+    const streetAddress =
+      [asNonEmpty(a.house_number), asNonEmpty(a.road)]
+        .filter(Boolean)
+        .join(" ") || null;
+    return {
+      streetAddress,
+      city:
+        asNonEmpty(a.city) ??
+        asNonEmpty(a.town) ??
+        asNonEmpty(a.village) ??
+        asNonEmpty(a.hamlet) ??
+        asNonEmpty(a.municipality) ??
+        null,
+      state: asNonEmpty(a.state),
+      zipCode: asNonEmpty(a.postcode),
+      displayName: asNonEmpty(data.display_name),
+    };
+  } catch (err) {
+    console.error("Nominatim reverse-geocode (address) failed:", err);
+    return null;
+  }
+}
+
 export type ReverseGeocodeResult = {
   neighborhood: string | null;
   district: string | null;

@@ -38,6 +38,11 @@ export type ManualListingInput = {
   squareFeet: number | null;
   priceUsd: number | null;
   description: string | null;
+  // Precise coordinates from the device GPS, when the user used "current
+  // location". When present, these are used directly instead of geocoding the
+  // typed address.
+  latitude: number | null;
+  longitude: number | null;
   photos: File[];
 };
 
@@ -91,12 +96,17 @@ export async function createListingManually(
       .filter((p): p is string => !!p)
       .join(", ") || address;
 
-  // Geocode for map placement, neighborhood/district, and the safety score.
-  // A failed geocode is non-fatal — the listing is still created, just
-  // without coordinates (and editable later to fix the address).
-  const geo = await geocodeAddress(fullAddress);
-  const latitude = geo?.lat ?? null;
-  const longitude = geo?.lng ?? null;
+  // Prefer precise device-GPS coordinates when supplied; otherwise geocode the
+  // typed address for map placement, neighborhood/district, and safety score.
+  // A failed geocode is non-fatal — the listing is still created without
+  // coordinates (and editable later to fix the address).
+  let latitude = input.latitude;
+  let longitude = input.longitude;
+  if (latitude == null || longitude == null) {
+    const geo = await geocodeAddress(fullAddress);
+    latitude = geo?.lat ?? null;
+    longitude = geo?.lng ?? null;
+  }
 
   const { neighborhood, district } = await resolveLocale({
     parsedNeighborhood: null,

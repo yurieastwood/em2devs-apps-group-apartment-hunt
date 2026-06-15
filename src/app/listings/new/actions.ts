@@ -8,6 +8,7 @@ import {
   type CreateListingError,
 } from "@/lib/listings/create-listing-from-url";
 import { createListingManually } from "@/lib/listings/create-listing-manually";
+import { reverseGeocodeToAddress } from "@/lib/geocode";
 
 export type ActionState = { kind: "idle" } | { kind: "error"; message: string };
 
@@ -69,6 +70,33 @@ function readInt(formData: FormData, name: string): number | null {
   return n == null ? null : Math.trunc(n);
 }
 
+export type ReverseGeocodeActionResult =
+  | {
+      ok: true;
+      streetAddress: string | null;
+      city: string | null;
+      state: string | null;
+      zipCode: string | null;
+      displayName: string | null;
+    }
+  | { ok: false; reason: string };
+
+export async function reverseGeocodeAction(
+  lat: number,
+  lng: number,
+): Promise<ReverseGeocodeActionResult> {
+  const { userId } = await auth();
+  if (!userId) return { ok: false, reason: "Not signed in" };
+  if (!(await isOrgAdmin())) return { ok: false, reason: "Admins only" };
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return { ok: false, reason: "Invalid coordinates" };
+  }
+
+  const r = await reverseGeocodeToAddress(lat, lng);
+  if (!r) return { ok: false, reason: "Couldn't look up that location" };
+  return { ok: true, ...r };
+}
+
 export async function createListingManuallyAction(
   _prev: ActionState,
   formData: FormData,
@@ -100,6 +128,8 @@ export async function createListingManuallyAction(
       squareFeet: readInt(formData, "squareFeet"),
       priceUsd: readInt(formData, "priceUsd"),
       description: readString(formData, "description"),
+      latitude: readNumber(formData, "latitude"),
+      longitude: readNumber(formData, "longitude"),
       photos,
     },
     userId,
