@@ -212,7 +212,7 @@ export function ListingListRow({
             </div>
           ) : null}
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 max-w-[180px]">
           <PriorityEditor
             key={`pri-${listingId}-${priority ?? "null"}`}
             listingId={listingId}
@@ -228,16 +228,29 @@ export function ListingListRow({
             <button
               type="button"
               onClick={() => setOpen(true)}
-              className="text-sm text-primary hover:underline"
+              title="Show photo"
+              aria-label="Show photo"
+              className="inline-flex items-center text-muted-foreground hover:text-foreground"
             >
-              Show photo
+              <svg
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="w-4 h-4"
+                aria-hidden="true"
+              >
+                <path
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                  d="M1.5 6a2.25 2.25 0 0 1 2.25-2.25h16.5A2.25 2.25 0 0 1 22.5 6v12a2.25 2.25 0 0 1-2.25 2.25H3.75A2.25 2.25 0 0 1 1.5 18V6Zm3 13.5 6.879-6.879a1.5 1.5 0 0 1 2.121 0l3.348 3.348a1.5 1.5 0 0 0 2.121 0l.781-.781V6a.75.75 0 0 0-.75-.75H3.75A.75.75 0 0 0 3 6v12c0 .414.336.75.75.75h.75ZM15 9a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Z"
+                />
+              </svg>
             </button>
           ) : null}
           {canDelete ? (
             <DeleteListingButton
               listingId={listingId}
               label="Delete"
-              className="text-xs text-muted-foreground hover:text-destructive disabled:opacity-60"
+              className="text-muted-foreground hover:text-destructive disabled:opacity-60"
             />
           ) : null}
         </div>
