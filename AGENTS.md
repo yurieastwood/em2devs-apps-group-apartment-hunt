@@ -98,6 +98,9 @@ Optional:
 |-----|------------------|
 | `R2_PUBLIC_URL_BASE` | If set, serve R2 objects from this base instead of signed URLs |
 | `CURL_IMPERSONATE_BIN` | Path to curl-impersonate binary; defaults to bundled `bin/curl-impersonate` |
+| `APP_BASE_URL` | Base URL linked from the daily digest message |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Enable the Telegram daily-digest channel |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_WHATSAPP_TO` | Enable the WhatsApp (Twilio) daily-digest channel; `TO` is comma-separated E.164 |
 
 # Database workflow
 
@@ -113,6 +116,7 @@ Drizzle Kit drives migrations.
 - Per-site parsers in `src/lib/extract/parsers/{zillow,apartments,apartmentlist,fultongrace}.ts`. Sites change HTML often — when one breaks, fix the parser and add a regression scrape against the saved raw HTML.
 - Refresh runs nightly via Vercel cron: `vercel.json` schedules `0 6 * * *` against `/api/cron/refresh-listings`. The endpoint requires `Authorization: Bearer $CRON_SECRET` (constant-time compared).
 - Refreshes diff incoming fields against current values and write deltas to `listingChanges`.
+- After the refresh, the cron sends a daily digest of the last 24h of `listingChanges` to any configured channel (Telegram, WhatsApp via Twilio) — see `src/lib/notify/`. It's a single shared digest (not per-org/owner), skipped when there are no changes, and failure-isolated so a notification error never fails the refresh.
 
 # Safety scoring
 

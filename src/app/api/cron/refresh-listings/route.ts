@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { db } from "@/db/client";
 import { listings } from "@/db/schema";
 import { refreshListingsBatch } from "@/lib/listings/refresh";
+import { notifyDailyDigest, type DigestNotifyResult } from "@/lib/notify/send";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,11 +51,24 @@ export async function GET(req: Request) {
     }
   }
 
+  // Send the daily digest of the last 24h of changes to any configured
+  // channels. Isolated so a notification failure never fails the refresh.
+  let notify: DigestNotifyResult | { notified: false; reason: string };
+  try {
+    notify = await notifyDailyDigest();
+  } catch (err) {
+    notify = {
+      notified: false,
+      reason: err instanceof Error ? err.message : String(err),
+    };
+  }
+
   return NextResponse.json({
     ok: true,
     totalMs: Date.now() - started,
     total: rows.length,
     changed,
     failed,
+    notify,
   });
 }
