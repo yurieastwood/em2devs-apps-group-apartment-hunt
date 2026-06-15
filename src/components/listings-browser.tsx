@@ -953,6 +953,15 @@ function useScrollToSelected<T extends HTMLElement>(
   return ref;
 }
 
+// True when a click landed on (or inside) an interactive control, so row-level
+// click-to-select handlers can ignore it and let the control do its own thing.
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest("a, button, input, select, textarea, label") != null
+  );
+}
+
 function highlightRingClass(isSelected: boolean): string {
   return isSelected
     ? "ring-2 ring-primary ring-offset-2 bg-primary/20"
@@ -1195,7 +1204,6 @@ function TableView({
       <table className="w-full text-sm">
         <thead className="bg-muted/40 text-xs text-muted-foreground">
           <tr>
-            <th className="px-3 py-2 w-8"></th>
             <th className="px-3 py-2 text-left font-medium">P</th>
             <th className="px-3 py-2 text-left font-medium">Photo</th>
             <th className="px-3 py-2 text-left font-medium">Address</th>
@@ -1248,23 +1256,17 @@ function TableRow({
   return (
     <tr
       data-listing-id={l.id}
-      className={`hover:bg-muted/40 transition-colors align-top ${
-        selected
-          ? "bg-primary/25 outline outline-2 outline-primary"
-          : ""
-      }`}
+      onClick={(e) => {
+        if (l.canDelete && !isInteractiveTarget(e.target)) onToggleCheck();
+      }}
+      className={`transition-colors align-top ${
+        checked
+          ? "bg-destructive/15 outline outline-1 outline-destructive/50"
+          : selected
+            ? "bg-primary/25 outline outline-2 outline-primary"
+            : "hover:bg-muted/40"
+      } ${l.canDelete ? "cursor-pointer" : ""}`}
     >
-      <td className="px-3 py-2">
-        {l.canDelete ? (
-          <input
-            type="checkbox"
-            checked={checked}
-            onChange={onToggleCheck}
-            className="w-4 h-4 cursor-pointer"
-            aria-label="Select listing"
-          />
-        ) : null}
-      </td>
       <td className="px-3 py-2 whitespace-nowrap">
         <PriorityEditor
           key={`pri-${l.id}-${l.priority ?? "null"}`}

@@ -56,6 +56,15 @@ export type ListingListRowProps = {
   onToggleCheck?: () => void;
 };
 
+// True when a click landed on (or inside) an interactive control, so the
+// row-level click-to-select handler can ignore it and let the control act.
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest("a, button, input, select, textarea, label") != null
+  );
+}
+
 export function ListingListRow({
   listingId,
   title,
@@ -85,24 +94,19 @@ export function ListingListRow({
   const [open, setOpen] = useState(false);
 
   return (
-    <li
-      data-listing-id={listingId}
-      className={
-        selected
-          ? "ring-2 ring-primary ring-offset-2 rounded bg-primary/20"
-          : ""
-      }
-    >
-      <div className="flex items-center gap-4 px-3 py-2 hover:bg-muted/40 transition-colors">
-        {onToggleCheck != null ? (
-          <input
-            type="checkbox"
-            checked={checked ?? false}
-            onChange={onToggleCheck}
-            className="w-4 h-4 cursor-pointer shrink-0"
-            aria-label="Select listing"
-          />
-        ) : null}
+    <li data-listing-id={listingId}>
+      <div
+        onClick={(e) => {
+          if (onToggleCheck && !isInteractiveTarget(e.target)) onToggleCheck();
+        }}
+        className={`flex items-center gap-4 px-3 py-2 transition-colors ${
+          checked
+            ? "bg-destructive/15 outline outline-1 outline-destructive/50 rounded"
+            : selected
+              ? "ring-2 ring-primary ring-offset-2 rounded bg-primary/20"
+              : "hover:bg-muted/40"
+        } ${onToggleCheck ? "cursor-pointer" : ""}`}
+      >
         <div className="flex-1 min-w-0">
           <div className="flex items-start gap-2">
             <Link
