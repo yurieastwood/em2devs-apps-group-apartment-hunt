@@ -7,6 +7,7 @@ import {
   createListingFromUrl,
   type CreateListingError,
 } from "@/lib/listings/create-listing-from-url";
+import { createListingManually } from "@/lib/listings/create-listing-manually";
 
 export type ActionState = { kind: "idle" } | { kind: "error"; message: string };
 
@@ -47,6 +48,68 @@ export async function createListingAction(
     redirect(`/listings/${result.error.existingId}?duplicate=1`);
   }
   return { kind: "error", message: messageFor(result.error) };
+}
+
+function readString(formData: FormData, name: string): string | null {
+  const v = formData.get(name);
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t.length > 0 ? t : null;
+}
+
+function readNumber(formData: FormData, name: string): number | null {
+  const s = readString(formData, name);
+  if (s == null) return null;
+  const n = Number(s.replace(/[$,\s]/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
+function readInt(formData: FormData, name: string): number | null {
+  const n = readNumber(formData, name);
+  return n == null ? null : Math.trunc(n);
+}
+
+export async function createListingManuallyAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { userId, orgId } = await auth();
+  if (!userId) return { kind: "error", message: "You're not signed in." };
+  if (!(await isOrgAdmin())) {
+    return { kind: "error", message: "Admins only — ask an admin to add this." };
+  }
+
+  const address = readString(formData, "address");
+  if (!address) {
+    return { kind: "error", message: "Enter a street address." };
+  }
+
+  const photos = formData
+    .getAll("photos")
+    .filter((f): f is File => f instanceof File && f.size > 0);
+
+  const result = await createListingManually(
+    {
+      title: readString(formData, "title"),
+      address,
+      city: readString(formData, "city"),
+      state: readString(formData, "state"),
+      zipCode: readString(formData, "zipCode"),
+      bedrooms: readNumber(formData, "bedrooms"),
+      bathrooms: readNumber(formData, "bathrooms"),
+      squareFeet: readInt(formData, "squareFeet"),
+      priceUsd: readInt(formData, "priceUsd"),
+      description: readString(formData, "description"),
+      photos,
+    },
+    userId,
+    orgId ?? null,
+  );
+
+  if (result.ok) {
+    redirect(`/listings/${result.id}`);
+  }
+  return { kind: "error", message: result.error };
 }
 
 export type ImportResult =

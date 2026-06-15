@@ -25,6 +25,7 @@ import { getPois } from "@/lib/points-of-interest";
 import { ListingLabelsSection } from "@/components/listing-labels";
 import { isOrgAdmin } from "@/lib/auth/roles";
 import { userCanAccessListing } from "@/lib/listings/access";
+import { isManualListing } from "@/lib/listings/create-listing-manually";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -201,6 +202,7 @@ export default async function ListingDetailPage({
   if (listing.deletedAt && !isAdmin) notFound();
   const canEdit = isAdmin && !listing.deletedAt;
   const canDelete = !listing.deletedAt && (isAdmin || isOwner);
+  const isManual = isManualListing(listing.sourceHost);
 
   const userPois = userId ? await getPois({ userId, orgId }) : [];
 
@@ -289,8 +291,14 @@ export default async function ListingDetailPage({
             />
           </span>
           <AvailabilityBadge availability={listing.availability} />
-          <span className="text-xs">{fmtLastChecked(listing.lastCheckedAt)}</span>
-          <RefreshListingButton listingId={listing.id} />
+          {isManual ? null : (
+            <>
+              <span className="text-xs">
+                {fmtLastChecked(listing.lastCheckedAt)}
+              </span>
+              <RefreshListingButton listingId={listing.id} />
+            </>
+          )}
         </div>
       </header>
 
@@ -367,14 +375,20 @@ export default async function ListingDetailPage({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-        <a
-          href={listing.sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary hover:underline"
-        >
-          View original listing on {listing.sourceHost} →
-        </a>
+        {isManual ? (
+          <span className="text-sm text-muted-foreground">
+            Added manually
+          </span>
+        ) : (
+          <a
+            href={listing.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            View original listing on {listing.sourceHost} →
+          </a>
+        )}
         {canEdit ? (
           <Link
             href={`/listings/${listing.id}/edit`}

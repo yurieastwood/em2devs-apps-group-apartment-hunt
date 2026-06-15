@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Manual-listing photo uploads post image files through a server action;
+  // the default 1MB body cap is far too small for phone photos.
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "30mb",
+    },
+  },
+
   // Bundle the curl-impersonate binary into every server route's trace.
   // Server actions live with their page route (e.g. /listings/new), not under
   // /api/**, so the matcher must be broad. The 4 MB binary only ships with
