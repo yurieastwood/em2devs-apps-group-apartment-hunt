@@ -7,6 +7,7 @@ import "yet-another-react-lightbox/styles.css";
 import { DeleteListingButton } from "./delete-listing-button";
 import { PriorityEditor } from "./priority-editor";
 import { ContactStatusEditor } from "./contact-status-editor";
+import { WhatsAppShareLink } from "./whatsapp-share-link";
 import {
   fmtTransitDuration,
   googleMapsTransitDirectionsUrl,
@@ -47,6 +48,7 @@ export type ListingListRowProps = {
   contactStatus?: string | null;
   commentCount?: number;
   possibleDuplicate?: boolean;
+  whatsappUrl?: string;
   neighborhood?: string | null;
   district?: string | null;
   safetyScore?: number | null;
@@ -84,6 +86,7 @@ export function ListingListRow({
   contactStatus,
   commentCount,
   possibleDuplicate,
+  whatsappUrl,
   neighborhood,
   district,
   safetyScore,
@@ -220,6 +223,7 @@ export function ListingListRow({
             listingId={listingId}
             current={contactStatus ?? null}
           />
+          {whatsappUrl ? <WhatsAppShareLink url={whatsappUrl} /> : null}
           {coverUrl ? (
             <button
               type="button"

@@ -17,6 +17,8 @@ import { HomeMap, type HomeMapProps } from "@/components/home-map";
 import { ListingListRow } from "@/components/listing-list-row";
 import { PriorityEditor } from "@/components/priority-editor";
 import { ContactStatusEditor } from "@/components/contact-status-editor";
+import { WhatsAppShareLink } from "@/components/whatsapp-share-link";
+import { buildWhatsAppShareUrl } from "@/lib/listings/whatsapp-share";
 import {
   CONTACT_STATUSES,
   contactStatusLabel,
@@ -229,12 +231,14 @@ export function ListingsBrowser({
   scopeLabels,
   home,
   pois,
+  appBaseUrl,
 }: {
   listings: HomeListingItem[];
   viewMode: "cards" | "list" | "table";
   scopeLabels: HomeLabel[];
   home: HomeMapProps["home"];
   pois: HomeMapProps["pois"];
+  appBaseUrl: string;
 }) {
   const [sortCriteria, setSortCriteria] =
     useState<SortCriterion[]>(DEFAULT_SORT);
@@ -633,6 +637,7 @@ export function ListingsBrowser({
           autoScroll={autoScroll}
           checkedIds={checkedIds}
           onToggleCheck={toggleCheck}
+          appBaseUrl={appBaseUrl}
         />
       ) : viewMode === "table" ? (
         <TableView
@@ -641,6 +646,7 @@ export function ListingsBrowser({
           autoScroll={autoScroll}
           checkedIds={checkedIds}
           onToggleCheck={toggleCheck}
+          appBaseUrl={appBaseUrl}
         />
       ) : (
         <ListView
@@ -649,6 +655,7 @@ export function ListingsBrowser({
           autoScroll={autoScroll}
           checkedIds={checkedIds}
           onToggleCheck={toggleCheck}
+          appBaseUrl={appBaseUrl}
         />
       )}
       <BulkActionBar
@@ -1005,12 +1012,14 @@ function CardsView({
   autoScroll,
   checkedIds,
   onToggleCheck,
+  appBaseUrl,
 }: {
   listings: HomeListingItem[];
   selectedListingId: string | null;
   autoScroll: boolean;
   checkedIds: Set<string>;
   onToggleCheck: (id: string) => void;
+  appBaseUrl: string;
 }) {
   const ref = useScrollToSelected<HTMLUListElement>(
     selectedListingId,
@@ -1144,13 +1153,16 @@ function CardsView({
                 current={l.contactStatus}
               />
             </div>
-            {l.canDelete ? (
-              <DeleteListingButton
-                listingId={l.id}
-                label="Delete"
-                className="text-xs text-muted-foreground hover:text-destructive disabled:opacity-60"
-              />
-            ) : null}
+            <div className="flex items-center gap-3">
+              <WhatsAppShareLink url={buildWhatsAppShareUrl(l, `${appBaseUrl}/listings/${l.id}`)} />
+              {l.canDelete ? (
+                <DeleteListingButton
+                  listingId={l.id}
+                  label="Delete"
+                  className="text-xs text-muted-foreground hover:text-destructive disabled:opacity-60"
+                />
+              ) : null}
+            </div>
           </div>
         </li>
       ))}
@@ -1164,12 +1176,14 @@ function ListView({
   autoScroll,
   checkedIds,
   onToggleCheck,
+  appBaseUrl,
 }: {
   listings: HomeListingItem[];
   selectedListingId: string | null;
   autoScroll: boolean;
   checkedIds: Set<string>;
   onToggleCheck: (id: string) => void;
+  appBaseUrl: string;
 }) {
   const ref = useScrollToSelected<HTMLUListElement>(
     selectedListingId,
@@ -1200,6 +1214,7 @@ function ListView({
           contactStatus={l.contactStatus}
           commentCount={l.commentCount}
           possibleDuplicate={l.possibleDuplicate}
+          whatsappUrl={buildWhatsAppShareUrl(l, `${appBaseUrl}/listings/${l.id}`)}
           neighborhood={l.neighborhood}
           district={l.district}
           safetyScore={l.safetyScore}
@@ -1220,12 +1235,14 @@ function TableView({
   autoScroll,
   checkedIds,
   onToggleCheck,
+  appBaseUrl,
 }: {
   listings: HomeListingItem[];
   selectedListingId: string | null;
   autoScroll: boolean;
   checkedIds: Set<string>;
   onToggleCheck: (id: string) => void;
+  appBaseUrl: string;
 }) {
   const ref = useScrollToSelected<HTMLDivElement>(
     selectedListingId,
@@ -1266,6 +1283,7 @@ function TableView({
               selected={selectedListingId === l.id}
               checked={checkedIds.has(l.id)}
               onToggleCheck={() => onToggleCheck(l.id)}
+              appBaseUrl={appBaseUrl}
             />
           ))}
         </tbody>
@@ -1279,11 +1297,13 @@ function TableRow({
   selected,
   checked,
   onToggleCheck,
+  appBaseUrl,
 }: {
   listing: HomeListingItem;
   selected: boolean;
   checked: boolean;
   onToggleCheck: () => void;
+  appBaseUrl: string;
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const beds = asNum(l.bedrooms);
@@ -1449,6 +1469,7 @@ function TableRow({
       </td>
       <td className="px-3 py-2 text-right whitespace-nowrap">
         <div className="inline-flex flex-col items-end gap-1">
+          <WhatsAppShareLink url={buildWhatsAppShareUrl(l, `${appBaseUrl}/listings/${l.id}`)} />
           {l.canDelete ? (
             <DeleteListingButton
               listingId={l.id}

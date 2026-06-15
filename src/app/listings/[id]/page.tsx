@@ -28,6 +28,8 @@ import { isOrgAdmin } from "@/lib/auth/roles";
 import { userCanAccessListing } from "@/lib/listings/access";
 import { isManualListing } from "@/lib/listings/manual-source";
 import { findPossibleDuplicates } from "@/lib/listings/duplicates";
+import { buildWhatsAppShareUrl } from "@/lib/listings/whatsapp-share";
+import { getAppOrigin } from "@/lib/request-origin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -207,28 +209,12 @@ export default async function ListingDetailPage({
   const canManagePhotos = canDelete;
   const isManual = isManualListing(listing.sourceHost);
 
-  // Pre-built WhatsApp share message. Opens the sender's own WhatsApp via the
-  // click-to-chat link; they pick the recipient. Include the public source URL
-  // for scraped listings so the recipient can open it (manual listings have no
-  // shareable URL).
-  const shareLines: string[] = [listing.title ?? listing.address ?? "Listing"];
-  const shareStats: string[] = [];
-  if (listing.priceUsd != null) {
-    shareStats.push(`$${listing.priceUsd.toLocaleString("en-US")}/mo`);
-  }
-  if (listing.bedrooms) shareStats.push(`${listing.bedrooms} bd`);
-  if (listing.bathrooms) shareStats.push(`${listing.bathrooms} ba`);
-  if (listing.squareFeet != null) {
-    shareStats.push(`${listing.squareFeet.toLocaleString("en-US")} sqft`);
-  }
-  if (shareStats.length > 0) shareLines.push(shareStats.join(" · "));
-  if (listing.address && listing.address !== shareLines[0]) {
-    shareLines.push(`📍 ${listing.address}`);
-  }
-  if (!isManual) shareLines.push(listing.sourceUrl);
-  const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(
-    shareLines.join("\n"),
-  )}`;
+  // Pre-built WhatsApp share — the message carries only the in-app link
+  // (recipients open it in the app, where the original source is available).
+  const whatsappShareUrl = buildWhatsAppShareUrl(
+    listing,
+    `${await getAppOrigin()}/listings/${listing.id}`,
+  );
 
   let possibleDuplicates: Awaited<
     ReturnType<typeof findPossibleDuplicates>

@@ -22,6 +22,7 @@ import {
 } from "@/lib/listings/labels";
 import { getCommentCounts } from "@/lib/listings/comments";
 import { flagDuplicateIds } from "@/lib/listings/duplicates";
+import { getAppOrigin } from "@/lib/request-origin";
 import { ViewModeToggle } from "@/components/view-mode-toggle";
 import { type HomeMapProps } from "@/components/home-map";
 import { HomeSettingsForm } from "@/components/home-settings-form";
@@ -129,6 +130,7 @@ export default async function HomePage() {
   const { userId, orgId } = await auth();
   const viewMode = await getViewMode();
   const isAdmin = await isOrgAdmin();
+  const appOrigin = await getAppOrigin();
 
   const scope = listingScope({ userId, orgId });
 
@@ -384,6 +386,7 @@ export default async function HomePage() {
         <ListingsBrowser
           listings={items}
           viewMode={viewMode}
+          appBaseUrl={appOrigin}
           scopeLabels={scopeLabels.map((l) => ({
             id: l.id,
             name: l.name,
