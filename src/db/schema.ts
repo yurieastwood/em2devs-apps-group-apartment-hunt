@@ -93,6 +93,7 @@ export const listingPhotos = pgTable(
       .references(() => listings.id, { onDelete: "cascade" }),
     sortOrder: integer("sort_order").notNull(),
     r2Key: text("r2_key").notNull(),
+    thumbR2Key: text("thumb_r2_key"),
     originalUrl: text("original_url").notNull(),
     contentType: text("content_type").notNull(),
     width: integer("width"),

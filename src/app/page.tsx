@@ -152,6 +152,7 @@ export default async function HomePage() {
             .select({
               listingId: listingPhotos.listingId,
               r2Key: listingPhotos.r2Key,
+              thumbR2Key: listingPhotos.thumbR2Key,
             })
             .from(listingPhotos)
             .where(eq(listingPhotos.sortOrder, 0)),
@@ -186,7 +187,11 @@ export default async function HomePage() {
             : Promise.resolve([]),
         ]);
 
-  const coverMap = new Map(coverRows.map((r) => [r.listingId, r.r2Key]));
+  // Prefer the small thumbnail (manual uploads generate one) for the grid;
+  // fall back to the full image for scraped/rehosted photos that have none.
+  const coverMap = new Map(
+    coverRows.map((r) => [r.listingId, r.thumbR2Key ?? r.r2Key]),
+  );
   const nearestPkRatingMap = buildNearestPkRatingMap(schoolRows);
   const labelsByListing: Map<string, Label[]> =
     ids.length === 0 ? new Map() : await getLabelsForListings(ids);
