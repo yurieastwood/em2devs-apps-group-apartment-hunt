@@ -8,12 +8,14 @@ import { comments, listings, reactions } from "@/db/schema";
 import { isOrgAdmin } from "@/lib/auth/roles";
 import { listingScope, userCanAccessListing } from "@/lib/listings/access";
 
-// Excludes soft-deleted listings so comment / reaction / edit / delete
-// actions on items in the trash silently no-op. The trash flow (restore /
-// permanent delete) reads the row directly with its own access check.
+// Resolves a listing the caller may act on. By default soft-deleted listings
+// are excluded (edit / delete must not touch trashed rows). Comment and
+// reaction actions pass `allowDeleted` so the team can keep discussing a
+// listing after it's been trashed (e.g. noting why it was discarded).
 async function getAccessibleListing(
   listingId: string,
   authCtx: { userId: string | null; orgId: string | null | undefined },
+  opts: { allowDeleted?: boolean } = {},
 ) {
   const [row] = await db
     .select({
@@ -26,7 +28,7 @@ async function getAccessibleListing(
     .where(eq(listings.id, listingId))
     .limit(1);
   if (!row) return null;
-  if (row.deletedAt != null) return null;
+  if (row.deletedAt != null && !opts.allowDeleted) return null;
   if (!userCanAccessListing(row, authCtx)) return null;
   return row;
 }
@@ -106,7 +108,11 @@ export async function addCommentAction(
   const { userId, orgId } = await auth();
   if (!userId) return { kind: "error", message: "You're not signed in." };
 
-  const accessible = await getAccessibleListing(listingId, { userId, orgId });
+  const accessible = await getAccessibleListing(
+    listingId,
+    { userId, orgId },
+    { allowDeleted: true },
+  );
   if (!accessible) {
     return { kind: "error", message: "You don't have access to this listing." };
   }
@@ -157,7 +163,11 @@ export async function toggleReactionAction(
   const { userId, orgId } = await auth();
   if (!userId) return;
 
-  const accessible = await getAccessibleListing(listingId, { userId, orgId });
+  const accessible = await getAccessibleListing(
+    listingId,
+    { userId, orgId },
+    { allowDeleted: true },
+  );
   if (!accessible) return;
 
   const existing = await db
