@@ -1,13 +1,16 @@
 import { randomUUID } from "node:crypto";
-import sharp from "sharp";
 import { db } from "@/db/client";
 import { listingPhotos, listings } from "@/db/schema";
 import { ensureDistances, getPoiIdsInScope } from "../places/poi-distances";
-import { putObject } from "../storage/r2";
 import { computeSafetyScore } from "../safety";
 import { geocodeAddress } from "../geocode";
 import { resolveLocale } from "./resolve-locale";
 import { MANUAL_SOURCE_HOST, MANUAL_SOURCE_SCHEME } from "./manual-source";
+import {
+  storeOptimizedImage,
+  ALLOWED_IMAGE_TYPES,
+  MAX_PHOTO_BYTES,
+} from "./photo-store";
 
 // Sentinel host/scheme for manual listings live in ./manual-source (kept
 // sharp-free so render routes can import the helpers). Re-export for callers
@@ -18,22 +21,7 @@ export {
   isManualListing,
 } from "./manual-source";
 
-const ALLOWED_CONTENT_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-]);
-
 const MAX_PHOTOS = 24;
-const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
-// Phone photos are multi-MB; re-encode to WebP and cap dimensions to slash R2
-// cost without visible quality loss. The thumbnail is what the listing grid
-// loads, so it stays small.
-const MAX_DIMENSION = 1600;
-const THUMB_DIMENSION = 500;
-const MAIN_QUALITY = 80;
-const THUMB_QUALITY = 70;
 
 export type ManualListingInput = {
   title: string | null;
@@ -67,49 +55,18 @@ async function storeUploadedPhotos(
   for (const file of files.slice(0, MAX_PHOTOS)) {
     if (!file || file.size === 0 || file.size > MAX_PHOTO_BYTES) continue;
     const contentType = file.type.split(";")[0]?.trim().toLowerCase() ?? "";
-    if (!ALLOWED_CONTENT_TYPES.has(contentType)) continue;
+    if (!ALLOWED_IMAGE_TYPES.has(contentType)) continue;
 
     const input = Buffer.from(await file.arrayBuffer());
-    const prefix = `listings/${listingId}/${String(sortOrder).padStart(3, "0")}`;
-    const key = `${prefix}.webp`;
-    const thumbKey = `${prefix}_thumb.webp`;
-
-    try {
-      // .rotate() bakes in EXIF orientation (phones rely on it) before strip.
-      const base = sharp(input).rotate();
-      const { data: main, info } = await base
-        .clone()
-        .resize(MAX_DIMENSION, MAX_DIMENSION, {
-          fit: "inside",
-          withoutEnlargement: true,
-        })
-        .webp({ quality: MAIN_QUALITY })
-        .toBuffer({ resolveWithObject: true });
-      const thumb = await base
-        .clone()
-        .resize(THUMB_DIMENSION, THUMB_DIMENSION, {
-          fit: "inside",
-          withoutEnlargement: true,
-        })
-        .webp({ quality: THUMB_QUALITY })
-        .toBuffer();
-
-      await putObject(key, main, "image/webp");
-      await putObject(thumbKey, thumb, "image/webp");
-
-      rows.push({
-        listingId,
-        sortOrder,
-        r2Key: key,
-        thumbR2Key: thumbKey,
-        originalUrl: `upload://${file.name || `photo-${sortOrder}`}`,
-        contentType: "image/webp",
-        width: info.width ?? null,
-        height: info.height ?? null,
-      });
+    const row = await storeOptimizedImage(
+      listingId,
+      sortOrder,
+      input,
+      `upload://${file.name || `photo-${sortOrder}`}`,
+    );
+    if (row) {
+      rows.push(row);
       sortOrder += 1;
-    } catch {
-      continue; // a single bad/corrupt upload shouldn't abort the listing
     }
   }
   return rows;

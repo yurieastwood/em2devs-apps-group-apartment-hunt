@@ -36,7 +36,7 @@ type DownloadResult =
   | { ok: true; data: Downloaded }
   | { ok: false; reason: string };
 
-async function downloadPhoto(url: string): Promise<DownloadResult> {
+export async function downloadPhoto(url: string): Promise<DownloadResult> {
   const tries: string[] = [];
 
   try {

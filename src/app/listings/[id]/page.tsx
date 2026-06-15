@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { listingPhotos, listings } from "@/db/schema";
 import { urlFor } from "@/lib/storage/r2";
 import { PhotoCarousel } from "@/components/photo-carousel";
+import { AddPhotos } from "./add-photos";
 import { DeleteListingButton } from "@/components/delete-listing-button";
 import { CommentsSection } from "./comments-section";
 import { ReactionsBar } from "./reactions-bar";
@@ -203,6 +204,7 @@ export default async function ListingDetailPage({
   if (listing.deletedAt && !isAdmin) notFound();
   const canEdit = isAdmin && !listing.deletedAt;
   const canDelete = !listing.deletedAt && (isAdmin || isOwner);
+  const canManagePhotos = canDelete;
   const isManual = isManualListing(listing.sourceHost);
 
   let possibleDuplicates: Awaited<
@@ -372,6 +374,7 @@ export default async function ListingDetailPage({
         }))}
       />
 
+      {canManagePhotos ? <AddPhotos listingId={listing.id} /> : null}
 
       <PhotoErrorsSection raw={listing.raw} />
 
