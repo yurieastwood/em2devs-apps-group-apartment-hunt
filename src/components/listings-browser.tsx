@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
@@ -10,7 +17,10 @@ import { HomeMap, type HomeMapProps } from "@/components/home-map";
 import { ListingListRow } from "@/components/listing-list-row";
 import { PriorityEditor } from "@/components/priority-editor";
 import { ContactStatusEditor } from "@/components/contact-status-editor";
-import { CONTACT_STATUSES } from "@/lib/listings/contact-status";
+import {
+  CONTACT_STATUSES,
+  contactStatusLabel,
+} from "@/lib/listings/contact-status";
 import {
   fmtTransitDuration,
   googleMapsTransitDirectionsUrl,
@@ -250,6 +260,7 @@ export function ListingsBrowser({
   const [autoScroll, setAutoScroll] = useState(true);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [bulkPending, startBulkTransition] = useTransition();
+  const [comparing, setComparing] = useState(false);
 
   const allNeighborhoods = useMemo(() => {
     const set = new Set<string>();
@@ -643,8 +654,16 @@ export function ListingsBrowser({
         count={checkedIds.size}
         onDelete={handleBulkDelete}
         onClear={() => setCheckedIds(new Set())}
+        onCompare={() => setComparing(true)}
         pending={bulkPending}
       />
+      {comparing ? (
+        <CompareModal
+          items={listings.filter((l) => checkedIds.has(l.id))}
+          pois={pois}
+          onClose={() => setComparing(false)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -1431,15 +1450,292 @@ function TableRow({
   );
 }
 
+// Indices of the "best" values in a compare row (min or max), only when at
+// least two values are comparable — so a lone value isn't crowned a winner.
+function bestIndices(values: (number | null)[], dir: "min" | "max"): Set<number> {
+  const valid = values
+    .map((v, i) => ({ v, i }))
+    .filter((x): x is { v: number; i: number } => x.v != null);
+  if (valid.length < 2) return new Set();
+  const best =
+    dir === "min"
+      ? Math.min(...valid.map((x) => x.v))
+      : Math.max(...valid.map((x) => x.v));
+  return new Set(valid.filter((x) => x.v === best).map((x) => x.i));
+}
+
+function CompareRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <tr>
+      <th className="sticky left-0 z-10 bg-background text-left font-medium text-muted-foreground px-3 py-2 align-top whitespace-nowrap border-r border-border">
+        {label}
+      </th>
+      {children}
+    </tr>
+  );
+}
+
+function CompareModal({
+  items,
+  pois,
+  onClose,
+}: {
+  items: HomeListingItem[];
+  pois: HomeMapProps["pois"];
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const ppsf = (l: HomeListingItem): number | null =>
+    l.priceUsd != null && l.squareFeet ? l.priceUsd / l.squareFeet : null;
+
+  const bestPrice = bestIndices(
+    items.map((l) => l.priceUsd),
+    "min",
+  );
+  const bestPpsf = bestIndices(items.map(ppsf), "min");
+  const bestSafety = bestIndices(
+    items.map((l) => l.safetyScore),
+    "max",
+  );
+  const bestPk = bestIndices(
+    items.map((l) => l.nearestPkRating),
+    "max",
+  );
+
+  const winner = "font-semibold text-emerald-700 dark:text-emerald-400";
+  const cell = "px-3 py-2 align-top whitespace-nowrap";
+  const poiList = pois ?? [];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4 overflow-auto"
+      onClick={onClose}
+    >
+      <div
+        className="bg-background rounded-lg border border-border shadow-xl my-8 max-w-full"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <h2 className="text-lg font-semibold">
+            Compare {items.length} listing{items.length === 1 ? "" : "s"}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-2xl leading-none text-muted-foreground hover:text-foreground px-2"
+          >
+            ×
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="text-sm border-collapse">
+            <tbody className="divide-y divide-border">
+              <CompareRow label="">
+                {items.map((l) => (
+                  <td key={l.id} className={cell}>
+                    {l.coverUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={l.coverUrl}
+                        alt={l.address ?? "Listing"}
+                        className="w-32 h-24 object-cover rounded"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-32 h-24 rounded bg-muted" />
+                    )}
+                  </td>
+                ))}
+              </CompareRow>
+              <CompareRow label="Address">
+                {items.map((l) => (
+                  <td key={l.id} className="px-3 py-2 align-top max-w-[220px]">
+                    <Link
+                      href={`/listings/${l.id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {l.title ?? l.address ?? "Unknown address"}
+                    </Link>
+                  </td>
+                ))}
+              </CompareRow>
+              <CompareRow label="Price">
+                {items.map((l, i) => (
+                  <td
+                    key={l.id}
+                    className={`${cell} ${bestPrice.has(i) ? winner : ""}`}
+                  >
+                    {fmtPrice(l.priceUsd) ?? "—"}
+                  </td>
+                ))}
+              </CompareRow>
+              <CompareRow label="$/sqft">
+                {items.map((l, i) => {
+                  const v = ppsf(l);
+                  return (
+                    <td
+                      key={l.id}
+                      className={`${cell} ${bestPpsf.has(i) ? winner : ""}`}
+                    >
+                      {v != null ? `$${v.toFixed(2)}` : "—"}
+                    </td>
+                  );
+                })}
+              </CompareRow>
+              <CompareRow label="Beds">
+                {items.map((l) => (
+                  <td key={l.id} className={cell}>
+                    {l.bedrooms ?? "—"}
+                  </td>
+                ))}
+              </CompareRow>
+              <CompareRow label="Baths">
+                {items.map((l) => (
+                  <td key={l.id} className={cell}>
+                    {l.bathrooms ?? "—"}
+                  </td>
+                ))}
+              </CompareRow>
+              <CompareRow label="Sq ft">
+                {items.map((l) => (
+                  <td key={l.id} className={cell}>
+                    {l.squareFeet != null
+                      ? l.squareFeet.toLocaleString("en-US")
+                      : "—"}
+                  </td>
+                ))}
+              </CompareRow>
+              <CompareRow label="Area">
+                {items.map((l) => (
+                  <td key={l.id} className={cell}>
+                    {fmtLocale(l.neighborhood, l.district) ?? "—"}
+                  </td>
+                ))}
+              </CompareRow>
+              <CompareRow label="Availability">
+                {items.map((l) => (
+                  <td key={l.id} className={cell}>
+                    {l.availability === "available"
+                      ? "Available"
+                      : l.availability === "unavailable"
+                        ? "Unavailable"
+                        : "—"}
+                  </td>
+                ))}
+              </CompareRow>
+              <CompareRow label="Status">
+                {items.map((l) => (
+                  <td key={l.id} className={cell}>
+                    {contactStatusLabel(l.contactStatus) ?? "—"}
+                  </td>
+                ))}
+              </CompareRow>
+              <CompareRow label="Safety">
+                {items.map((l, i) => (
+                  <td
+                    key={l.id}
+                    className={`${cell} ${
+                      bestSafety.has(i)
+                        ? winner
+                        : l.safetyScore != null
+                          ? safetyClass(l.safetyScore)
+                          : ""
+                    }`}
+                  >
+                    {l.safetyScore != null ? l.safetyScore : "—"}
+                  </td>
+                ))}
+              </CompareRow>
+              <CompareRow label="PK rating">
+                {items.map((l, i) => (
+                  <td
+                    key={l.id}
+                    className={`${cell} ${bestPk.has(i) ? winner : ""}`}
+                  >
+                    {l.nearestPkRating != null ? `${l.nearestPkRating}/10` : "—"}
+                  </td>
+                ))}
+              </CompareRow>
+              {poiList.map((p) => {
+                const durs = items.map(
+                  (l) =>
+                    l.poiDistances.find((d) => d.poiId === p.id)
+                      ?.durationSeconds ?? null,
+                );
+                const best = bestIndices(durs, "min");
+                return (
+                  <CompareRow key={p.id} label={`🚌 ${p.label}`}>
+                    {items.map((l, i) => (
+                      <td
+                        key={l.id}
+                        className={`${cell} ${best.has(i) ? winner : ""}`}
+                      >
+                        {fmtTransitDuration(durs[i]) ?? "—"}
+                      </td>
+                    ))}
+                  </CompareRow>
+                );
+              })}
+              <CompareRow label="Labels">
+                {items.map((l) => (
+                  <td key={l.id} className="px-3 py-2 align-top">
+                    {l.labels.length > 0 ? (
+                      <div className="flex flex-wrap gap-1 max-w-[220px]">
+                        {l.labels.map((lbl) => (
+                          <span
+                            key={lbl.id}
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full border text-xs ${labelChipClasses(lbl.color)}`}
+                          >
+                            {lbl.name}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                ))}
+              </CompareRow>
+              <CompareRow label="Comments">
+                {items.map((l) => (
+                  <td key={l.id} className={cell}>
+                    {l.commentCount > 0 ? `💬 ${l.commentCount}` : "—"}
+                  </td>
+                ))}
+              </CompareRow>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BulkActionBar({
   count,
   onDelete,
   onClear,
+  onCompare,
   pending,
 }: {
   count: number;
   onDelete: () => void;
   onClear: () => void;
+  onCompare: () => void;
   pending: boolean;
 }) {
   if (count === 0) return null;
@@ -1448,6 +1744,15 @@ function BulkActionBar({
       <span className="text-sm font-medium tabular-nums">
         {count} {count === 1 ? "listing" : "listings"} selected
       </span>
+      <button
+        type="button"
+        onClick={onCompare}
+        disabled={count < 2}
+        title={count < 2 ? "Select 2 or more to compare" : undefined}
+        className="px-3 py-1.5 rounded border border-border text-sm font-medium hover:bg-muted disabled:opacity-50"
+      >
+        Compare
+      </button>
       <button
         type="button"
         onClick={onDelete}
