@@ -7,16 +7,16 @@ import { putObject } from "../storage/r2";
 import { computeSafetyScore } from "../safety";
 import { geocodeAddress } from "../geocode";
 import { resolveLocale } from "./resolve-locale";
+import { MANUAL_SOURCE_HOST, MANUAL_SOURCE_SCHEME } from "./manual-source";
 
-// Sentinel host/scheme for listings entered by hand rather than scraped. The
-// refresh pipeline has no parser for this host, so manual listings are
-// skipped on refresh — by design, there's no source page to re-scrape.
-export const MANUAL_SOURCE_HOST = "manual.local";
-export const MANUAL_SOURCE_SCHEME = "manual:";
-
-export function isManualListing(sourceHost: string | null): boolean {
-  return sourceHost === MANUAL_SOURCE_HOST;
-}
+// Sentinel host/scheme for manual listings live in ./manual-source (kept
+// sharp-free so render routes can import the helpers). Re-export for callers
+// that already import them from here.
+export {
+  MANUAL_SOURCE_HOST,
+  MANUAL_SOURCE_SCHEME,
+  isManualListing,
+} from "./manual-source";
 
 const ALLOWED_CONTENT_TYPES = new Set([
   "image/jpeg",

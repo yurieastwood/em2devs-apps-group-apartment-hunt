@@ -25,7 +25,7 @@ import { getPois } from "@/lib/points-of-interest";
 import { ListingLabelsSection } from "@/components/listing-labels";
 import { isOrgAdmin } from "@/lib/auth/roles";
 import { userCanAccessListing } from "@/lib/listings/access";
-import { isManualListing } from "@/lib/listings/create-listing-manually";
+import { isManualListing } from "@/lib/listings/manual-source";
 import { findPossibleDuplicates } from "@/lib/listings/duplicates";
 
 export const runtime = "nodejs";
