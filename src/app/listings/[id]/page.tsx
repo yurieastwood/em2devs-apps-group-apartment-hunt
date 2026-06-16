@@ -431,7 +431,7 @@ export default async function ListingDetailPage({
         </section>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {isManual ? (
           <span className="text-sm text-muted-foreground">
             Added manually
@@ -441,18 +441,40 @@ export default async function ListingDetailPage({
             href={listing.sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary hover:underline"
+            title={`View original on ${listing.sourceHost}`}
+            aria-label={`View original on ${listing.sourceHost}`}
+            className="inline-flex items-center text-muted-foreground hover:text-foreground"
           >
-            View original listing on {listing.sourceHost} →
+            <svg
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="w-4 h-4"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M15.75 2.25H21a.75.75 0 0 1 .75.75v5.25a.75.75 0 0 1-1.5 0V4.81L8.03 17.03a.75.75 0 0 1-1.06-1.06L19.19 3.75h-3.44a.75.75 0 0 1 0-1.5Zm-10.5 4.5a1.5 1.5 0 0 0-1.5 1.5v10.5a1.5 1.5 0 0 0 1.5 1.5h10.5a1.5 1.5 0 0 0 1.5-1.5V10.5a.75.75 0 0 1 1.5 0v8.25a3 3 0 0 1-3 3H5.25a3 3 0 0 1-3-3V8.25a3 3 0 0 1 3-3h8.25a.75.75 0 0 1 0 1.5H5.25Z"
+              />
+            </svg>
           </a>
         )}
         <WhatsAppShareLink url={whatsappShareUrl} />
         {canEdit ? (
           <Link
             href={`/listings/${listing.id}/edit`}
-            className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+            title="Edit"
+            aria-label="Edit"
+            className="inline-flex items-center text-muted-foreground hover:text-foreground"
           >
-            Edit
+            <svg
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="w-4 h-4"
+              aria-hidden="true"
+            >
+              <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32L19.513 8.2Z" />
+            </svg>
           </Link>
         ) : null}
         {canDelete ? (
