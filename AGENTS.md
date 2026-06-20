@@ -10,6 +10,8 @@ Private, collaborative apartment-hunting web app. Families/teams share a workspa
 
 License: AGPL-3.0-or-later. The app sets `noindex/nofollow` — do not introduce public/indexable surfaces.
 
+> **Picking up work?** See `MEMORY.md` for key decisions and current open topics/TODOs, and `docs/local-dev.md` for local setup + the DB migration workflow.
+
 # Tech stack
 
 | Layer | Choice |
